@@ -1743,7 +1743,10 @@ function extrasFor(r){
 }
 function photoFor(r){
   var e = extrasFor(r);
-  return (e && e.photo) ? e.photo : (r && (r.photo || r.photoUrl)) || '';
+  if(e && e.photo) return e.photo;
+  /* list-reports returns headshotUrl (absolute, from the scout site's
+     frame function). Prospect photo first, legacy fields after. */
+  return (r && (r.headshotUrl || r.photo || r.photoUrl)) || '';
 }
 function hudlFor(r){
   var e = extrasFor(r);
@@ -3029,7 +3032,9 @@ function renderCurrentView(){
    Film is never cut: FILM_SOURCES maps film_id -> source and the
    player seeks to each rep's clip_in/clip_out.
    ============================================================ */
-const FRAME_URL = "/.netlify/functions/frame?key=";
+/* Frames live in the scout site's blob store, not on this domain, so the
+   URL must be absolute. Derived from LIVE_URL so there is one place to change. */
+const FRAME_URL = LIVE_URL.replace(/\/list-reports$/, "/frame?key=");
 const FILM_SOURCES = {
   // "hoover_2026_wk5_northgate": { type:"youtube", id:"VIDEOID" },
   // "hoover_2026_wk5_northgate": { type:"mp4", url:"https://your-host/game.mp4" },
