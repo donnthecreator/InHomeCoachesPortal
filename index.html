@@ -604,6 +604,53 @@
     .xg-table{overflow-x:auto;}
     .xg-head,.xg-row{min-width:480px;}
   }
+
+  /* =====================================================================
+     MINIMAL SKIN (Sept 2026)
+     Matches the scout-side report form. One accent: InHome Score stays
+     red. Everything else is white/grey on black with thin lines. No solid
+     red panels, no pastel pills, no rainbow trait grades. Delete this
+     block to return to the previous look; nothing in the JS depends on it.
+  ===================================================================== */
+  .overlay{background:rgba(0,0,0,.72);}
+  .modal{background:#0D0D0D; border:1px solid #2A2A2A;}
+  .m-head{background:#0D0D0D; color:#F5F5F5; border-bottom:1px solid #2A2A2A;}
+  .m-close{background:transparent; border:1px solid #2A2A2A; color:#A0A0A0;}
+  .m-sub{color:#A0A0A0;}
+  .chip{background:transparent; border:1px solid #2A2A2A; color:#A0A0A0;}
+  .m-score{background:#0D0D0D;}
+  .m-side .v{color:#F5F5F5;}
+  .bar-fill{background:#F5F5F5;}
+  .sec-num{background:transparent; border:1px solid #2A2A2A; color:#A0A0A0;}
+  .trait{background:transparent;}
+  .trait-grade.g1, .trait-grade.g2, .trait-grade.g3, .trait-grade.g4, .trait-grade.g5{color:#F5F5F5;}
+  .trait-grade.g1, .trait-grade.g2{color:#A0A0A0;}
+  .gate-item{background:transparent;}
+  .pill.pass, .pill.concern, .pill.fail{background:transparent; border:1px solid #2A2A2A; color:#F5F5F5;}
+  .pill.concern{color:#A0A0A0;}
+  .pill.fail{color:#F5F5F5; text-decoration:underline; text-decoration-color:var(--accent); text-underline-offset:3px;}
+  .iq-wrap{background:transparent;}
+  .iq-val{color:#F5F5F5;}
+  .iq-fill{background:#F5F5F5;}
+  .narrative{background:transparent; border-left-color:#2A2A2A;}
+  .rec-box{background:transparent; border:1px solid #2A2A2A; color:#F5F5F5;}
+  .rec-box .k{color:#A0A0A0;}
+  .film-btn{background:transparent; border:1.5px solid #F5F5F5; color:#F5F5F5;}
+  .film-btn:hover{background:#F5F5F5; color:#000; filter:none;}
+  .flag.aligned, .flag.review, .flag.track{background:transparent; border:1px solid #2A2A2A; color:#A0A0A0;}
+  .trk-box{background:transparent;}
+  .trk-cell.is-key{border-color:#F5F5F5; background:transparent;}
+  .trk-cell.is-key .trk-mark{color:#F5F5F5;}
+  .m-photo{border:1px solid #2A2A2A;}
+
+  /* Board and prospect cards */
+  .bcol-head{border-bottom-color:#2A2A2A;}
+  .bcard:hover{border-color:#A0A0A0;}
+  .bcard-trk{color:#A0A0A0;}
+  .pc-pos{background:transparent; border:1px solid #2A2A2A; color:#F5F5F5;}
+  .pc-tier{color:#A0A0A0;}
+  .rec-filter:hover{border-color:#A0A0A0;}
+  .rec-filter.on{border-color:#F5F5F5;}
 </style>
 </head>
 <body>
