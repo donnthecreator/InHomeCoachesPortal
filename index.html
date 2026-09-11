@@ -1599,8 +1599,9 @@ function renderHomeTicker(){
   if(MARKET_DEMO){
     items = marketDemoAllRows();
   } else {
-    if(!REPORTS.length){ host.innerHTML = ''; return; }
+    if(PERF === null){ loadPerformances().then(renderHomeTicker); host.innerHTML = ''; return; }
     items = marketLiveAllRows();
+    if(!items.length){ host.innerHTML = ''; return; }
   }
   host.innerHTML = marketTickerHTML(items);
   wireTicker(host, items);
@@ -1927,6 +1928,19 @@ const MARKET_KEY = 'inhome_market_hist_v1';
 let marketFilter = 'all';
 let marketClassFilter = '';   // '' = all classes, else a year string like '2026'
 let marketPosFilter = '';     // '' = all positions, else a position code like 'CB'
+let marketLevelFilter = '';   // '' = all, 'JUCO' or 'HS'
+let PERF = null;              // performance log from list-performances, loaded on demand
+let PERF_ERR = null;
+const PERF_URL = LIVE_URL.replace(/\/list-reports$/, '/list-performances');
+async function loadPerformances(){
+  try{
+    const res = await fetch(PERF_URL, { cache:'no-store' });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    PERF = data.players || [];
+    PERF_ERR = null;
+  }catch(err){ PERF = []; PERF_ERR = err.message; }
+}
 let marketRange = '6w';       // '4w' | '6w' | 'season' — controls the index chart only
 
 function isoWeekLabel(d){
@@ -2150,7 +2164,7 @@ function openMarketDetail(entry){
    Flip MARKET_DEMO to false the week the season opens and this whole
    block is dead code; renderMarketView falls through to the live logic
    already wired to REPORTS below. */
-const MARKET_DEMO = true;
+const MARKET_DEMO = false;   // live: driven by the performance log (list-performances)
 const MARKET_LIVE_DATE = 'August 2026';
 
 const MARKET_MOCK = [
@@ -2329,22 +2343,38 @@ function marketDemoAllRows(){
   });
 }
 
+/* One row per player in the performance log who has at least one graded
+   week. The series is the week grades in date order; price is the latest
+   grade; the change is latest minus the week before. The stat line for
+   each week rides along as the game log shown in the detail panel. If a
+   scouting report exists for the same player, the row opens it. */
+const nameKeyOf = (n) => String(n||'').toLowerCase().replace(/[^a-z]/g,'');
 function marketLiveAllRows(){
-  const hist = updateMarketSnapshots();
-  return REPORTS
-    .map((r,i)=>({r,i}))
-    .filter(x=>matchesRec(x.r))
-    .map(({r,i})=>{
-      const key = keyOf(r);
-      const series = hist[key] || [];
-      const price = series.length ? series[series.length-1].v : scoreReport(r).composite;
+  if(!PERF) return [];
+  const reportIdx = {};
+  REPORTS.forEach((r,i)=>{ const k = nameKeyOf(r.prospect); if(reportIdx[k]===undefined) reportIdx[k]=i; });
+  return PERF
+    .map(p=>{
+      const graded = (p.entries||[]).filter(e=>e.grade!=null && e.date);
+      if(!graded.length) return null;
+      const series = graded.map(e=>({ w: e.date, v: +Number(e.grade).toFixed(1), d: e.date }));
+      const log = graded.map(e=>{
+        const d = new Date(e.date);
+        const when = isNaN(d) ? e.date : d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+        return when + ' &middot; ' + (e.statLine ? esc(e.statLine) : 'no stat line logged') + (e.link ? ' <a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="color:var(--mute)">source</a>' : '');
+      });
+      const price = series[series.length-1].v;
       const prev = series.length > 1 ? series[series.length-2].v : null;
       const chg = prev!=null ? +(price-prev).toFixed(1) : null;
       const pctv = (prev!=null && prev!==0) ? +((chg/prev)*100).toFixed(1) : null;
       const dir = chg==null ? 'flat' : chg>0 ? 'up' : chg<0 ? 'down' : 'flat';
-      return {sym: marketSymbol(r.prospect), name:r.prospect, pos:r.position, cls:r.classYear, school:r.school,
-              series, price, chg, pctv, dir, reportIndex:i, log:null};
-    });
+      const ri = reportIdx[p.nameKey || nameKeyOf(p.name)];
+      return {sym: marketSymbol(p.name), name:p.name, pos:p.position, cls:p.classYear,
+              school: (p.school||'') + (p.level==='JUCO' ? ' (JUCO)' : ''), level:p.level||'HS',
+              series, price, chg, pctv, dir, reportIndex: ri===undefined ? null : ri, log};
+    })
+    .filter(Boolean)
+    .filter(x => !marketLevelFilter || x.level===marketLevelFilter);
 }
 
 function marketClassOptions(rows){
@@ -2395,6 +2425,13 @@ function marketPosSelectHTML(rows){
     ${opts.map(p=>`<option value="${p}"${marketPosFilter===p?' selected':''}>${p}</option>`).join('')}
   </select>`;
 }
+function marketLevelSelectHTML(){
+  return `<select class="xg-sel" id="xgLevelSel">
+    <option value=""${marketLevelFilter?'':' selected'}>HS + JUCO</option>
+    <option value="JUCO"${marketLevelFilter==='JUCO'?' selected':''}>JUCO only</option>
+    <option value="HS"${marketLevelFilter==='HS'?' selected':''}>High school only</option>
+  </select>`;
+}
 function marketRangeHTML(){
   return `<div class="xg-range">
     ${['4w','6w','season'].map(r=>`<button class="xg-rbtn ${marketRange===r?'on':''}" data-mr="${r}">${r==='season'?'SEASON':r.toUpperCase()}</button>`).join('')}
@@ -2405,7 +2442,7 @@ function marketRangeHTML(){
    which stays at the bottom and is only about the data being sample data. */
 function marketExplainHTML(){
   return `<div class="xg-explain">
-    <b>How a score moves.</b> Three inputs reprice a prospect every Saturday: production (the week's actual stats), health (an injury takes snaps and tape away from them), and character (gate grades plus a weekly scan of their X, Instagram, and TikTok activity). A big game moves a player up. An injury or a character flag moves them down, even in a week the tape looked fine.
+    <b>How a score moves.</b> Every logged game gets a 0-100 production grade from InHome off the actual stat line and film. A big week moves a player up, a quiet one or a missed game moves him down. Tap a row for the week-by-week log with sources.
   </div>`;
 }
 function wireMarketControls(host, onChange){
@@ -2417,6 +2454,8 @@ function wireMarketControls(host, onChange){
   if(clsSel) clsSel.addEventListener('change', ()=>{ marketClassFilter = clsSel.value; onChange(); });
   const posSel = host.querySelector('#xgPosSel');
   if(posSel) posSel.addEventListener('change', ()=>{ marketPosFilter = posSel.value; onChange(); });
+  const lvlSel = host.querySelector('#xgLevelSel');
+  if(lvlSel) lvlSel.addEventListener('change', ()=>{ marketLevelFilter = lvlSel.value; onChange(); });
 }
 
 function renderMarketDemo(){
@@ -2498,9 +2537,18 @@ function renderMarketDemo(){
 function renderMarketView(){
   if(MARKET_DEMO) return renderMarketDemo();
   const host = document.getElementById('viewHost');
-  if(!REPORTS.length){ host.innerHTML = '<div class="empty">No reports on the board yet.</div>'; return; }
+  if(PERF === null){
+    host.innerHTML = '<div class="empty">Loading the performance log...</div>';
+    loadPerformances().then(function(){ if(currentView==='market') renderCurrentView(); });
+    return;
+  }
+  if(PERF_ERR){ host.innerHTML = '<div class="empty">Could not load the performance log.<br><span style="font-size:12px;color:#666">' + esc(PERF_ERR) + '</span></div>'; return; }
 
   const allRows = marketLiveAllRows();
+  if(!allRows.length){
+    host.innerHTML = '<div class="empty">No graded performances yet.<br><span style="font-size:12px;color:#666">Players appear here as InHome logs their week-to-week production.</span></div>';
+    return;
+  }
   const scoped = scopeByClass(allRows);
   const rows = scoped
     .filter(x => marketFilter==='all' || x.dir===marketFilter)
@@ -2519,7 +2567,7 @@ function renderMarketView(){
     ${marketTickerHTML(tickerItems)}
     ${marketExplainHTML()}
     <div class="xg-top">
-      <div class="xg-live"><span class="xg-dot"></span><b>Repriced Saturdays</b></div>
+      <div class="xg-live"><span class="xg-dot"></span><b>Repriced as each week is logged</b></div>
       <span class="xg-time">${new Date().toLocaleDateString(undefined,{month:'short',day:'numeric'})} &middot; week ${isoWeekLabel(new Date())}</span>
     </div>
     <div class="xg-index">
@@ -2531,7 +2579,7 @@ function renderMarketView(){
             ? '<span class="xg-idx-pill" style="color:#7A8094;background:rgba(122,128,148,.14)">Not enough weeks yet</span>'
             : `<span class="xg-idx-pill" style="color:${idxUp?'#00C87A':'#FF4D4D'};background:${idxUp?'rgba(0,200,122,.14)':'rgba(255,77,77,.14)'}">${idxUp?'&#9650;':'&#9660;'} ${idxChg>0?'+':''}${idxChg}</span><span style="color:#7A8094">${marketRangeLabel(marketRange)}</span>`
         }</div>
-        <div class="xg-idx-sub">Every Saturday morning we reprice the board off that week's stats. Weighted by Film 50 / Athletic 25 / Character 15 / Production 10.</div>
+        <div class="xg-idx-sub">Each point is that week's InHome production grade (0-100) from the game log. The index is the average across every tracked player.</div>
       </div>
       <div class="xg-idx-chart">${marketSpark(idxSeries, 460, 100, idxUp===false?'#FF4D4D':'#00C87A')}</div>
     </div>
@@ -2541,6 +2589,7 @@ function renderMarketView(){
       <button class="xg-fbtn ${marketFilter==='up'?'on':''}" data-mf="up">Rising</button>
       <button class="xg-fbtn ${marketFilter==='down'?'on':''}" data-mf="down">Falling</button>
       <button class="xg-fbtn ${marketFilter==='flat'?'on':''}" data-mf="flat">No move yet</button>
+      ${marketLevelSelectHTML()}
       ${marketClassSelectHTML(allRows)}
       ${marketPosSelectHTML(allRows)}
       <span class="xg-count">${rows.length} of ${scoped.length}</span>
@@ -3167,7 +3216,7 @@ function renderCurrentView(){
   const shown = REPORTS.filter(function(r){ return matchesClass(r) && matchesRec(r); }).length;
   document.getElementById('boardCnt').textContent =
     currentView==='requested' ? (REQUESTED ? REQUESTED.length + ' requested · ' + REQUESTED.filter(function(x){return x.status==='scouted';}).length + ' evaluated' : 'Loading...')
-    : (currentView==='market' && MARKET_DEMO) ? 'Preview data'
+    : (currentView==='market') ? (PERF ? marketLiveAllRows().length + ' tracked' : 'Loading...')
     : recFilter ? shown + ' recommended to you'
     : classFilter==='ALL' ? REPORTS.length + ' evaluated'
                           : shown + ' in class of ' + classFilter;
