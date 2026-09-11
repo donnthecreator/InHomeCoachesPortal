@@ -3292,15 +3292,15 @@ function evidenceHTML(r){
   var empty=reps.length?"":'<div style="font-size:12.5px;color:var(--mute);padding:12px 0">No reps match that filter.</div>';
   var rows=reps.map(function(x,idx){
     var g=EIS_GL[x.grade]||EIS_GL[0]; var src=FILM_SOURCES[x.film_id];
-    var canPlay=src&&(src.type==="mp4"||src.type==="youtube");
+    var canPlay = !!x.clipUrl || (src&&(src.type==="mp4"||src.type==="youtube"));
     var slotId="eis_"+idx+"_"+(x.id||idx);
     var frame = x.id
       ? '<img src="'+FRAME_URL+encodeURIComponent(x.id)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.outerHTML=\'<div style=&quot;display:grid;place-items:center;height:100%;color:#666;font-size:11px&quot;>No still frame</div>\'">'
       : '<div style="display:grid;place-items:center;height:100%;color:#666;font-size:11px">No still frame</div>';
     var play = canPlay
-      ? '<button onclick="eisPlay(\''+slotId+'\',\''+esc(x.film_id)+'\','+(x.clip_in==null?'null':x.clip_in)+','+(x.clip_out==null?'null':x.clip_out)+')" style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.35);border:0;cursor:pointer"><span style="width:42px;height:42px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:15px;padding-left:3px">&#9654;</span></button>'
+      ? '<button onclick="eisPlay(\''+slotId+'\',\''+esc(x.film_id)+'\','+(x.clip_in==null?'null':x.clip_in)+','+(x.clip_out==null?'null':x.clip_out)+',\''+(x.clipUrl?esc(x.clipUrl):'')+'\')" style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.35);border:0;cursor:pointer"><span style="width:42px;height:42px;border-radius:50%;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:15px;padding-left:3px">&#9654;</span></button>'
       : "";
-    var hudl = (src&&src.type==="hudl")
+    var hudl = (!x.clipUrl && src&&src.type==="hudl")
       ? '<a href="'+src.url+'" target="_blank" rel="noopener" style="display:block;margin-top:6px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:7px;font-size:11px;color:var(--ink);text-decoration:none">Open in Hudl at '+eisTC(x.clip_in)+'</a>'
       : "";
     var tags=(x.traits||[]).map(function(t){return '<span style="font-size:10px;padding:3px 8px;border-radius:11px;border:1px solid var(--line);color:var(--mute)">'+esc(t)+'</span>';}).join("");
@@ -3320,10 +3320,19 @@ function evidenceHTML(r){
   return '<div class="sec"><div class="sec-h"><span class="sec-num">&#9658;</span><h3>EIS Film Evidence</h3><span class="wt">'+all.length+' reps &middot; '+w+'W '+l+'L</span></div>'+filters+empty+rows+'</div>';
 }
 
-function eisPlay(slotId, filmId, inS, outS){
-  var src=FILM_SOURCES[filmId], slot=document.getElementById(slotId);
-  if(!src||!slot) return;
+function eisPlay(slotId, filmId, inS, outS, clipUrl){
+  var slot=document.getElementById(slotId);
+  if(!slot) return;
   inS = (inS==null)?0:inS;
+  /* A real recorded clip (clip_<repId> in blob storage) always wins —
+     it plays instantly, needs no timecode math, and works whether or
+     not the scout ever entered a Hudl link for this rep. */
+  if(clipUrl){
+    slot.innerHTML = '<video controls autoplay playsinline preload="auto" style="width:100%;height:100%;display:block;background:#000;object-fit:cover" src="'+esc(clipUrl)+'"></video>';
+    return;
+  }
+  var src=FILM_SOURCES[filmId];
+  if(!src) return;
   if(src.type==="youtube"){
     var q="start="+Math.floor(inS)+(outS!=null?("&end="+Math.ceil(outS)):"")+"&autoplay=1&rel=0";
     slot.innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+src.id+'?'+q+'" allow="autoplay; encrypted-media" allowfullscreen style="width:100%;height:100%;border:0"></iframe>';
