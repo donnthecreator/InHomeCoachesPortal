@@ -8,12 +8,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* Home / gate palette is black and white. The moment a program signs
+     in, applySchoolTheme() swaps the accent to that school's color. */
   :root{
-    --navy:#FF0000; --navy2:#CC0000; --blue:#FF0000; --blue-dim:#FF000022;
+    --navy:#F5F5F5; --navy2:#DADADA; --blue:#F5F5F5; --blue-dim:#F5F5F522;
     --paper:#0A0A0A; --line:#2A2A2A; --ink:#F5F5F5; --mute:#888888;
     --good:#1FA35C; --warn:#E0A419; --bad:#CC0000; --card:#141414;
-    --accent:#FF0000; --accent-dk:#CC0000; --accent-dim:#FF000022;
-    --accent-bg:rgba(255,0,0,.12); --accent-lt:rgba(255,0,0,.10); --on-accent:#FFFFFF; --accent-2:#FF0000;
+    --accent:#F5F5F5; --accent-dk:#DADADA; --accent-dim:#F5F5F522;
+    --accent-bg:rgba(245,245,245,.10); --accent-lt:rgba(245,245,245,.08); --on-accent:#0A0A0A; --accent-2:#F5F5F5;
   }
   body.dark-unused{
     --paper:#0A0A0A; --card:#141414; --line:#2A2A2A; --ink:#F5F5F5;
@@ -75,7 +77,7 @@
   .gate-form input{width:100%; padding:15px 16px; border-radius:12px; border:1.5px solid #2A2A2A;
         background:#141414; color:#F5F5F5; font-size:16px; text-align:center; letter-spacing:.18em; text-transform:uppercase;}
   .gate-form input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim);}
-  .gate-form button{width:100%; padding:15px; border-radius:12px; border:none; background:var(--blue); color:#fff;
+  .gate-form button{width:100%; padding:15px; border-radius:12px; border:none; background:var(--blue); color:var(--on-accent);
         font-family:'Barlow',sans-serif; font-weight:600; font-size:15px; letter-spacing:.09em; text-transform:uppercase;}
   .gate-line{margin-top:30px; font-family:'Barlow',sans-serif; font-weight:500; font-size:15px;
         letter-spacing:.02em; color:#B4B4B4; line-height:2.1;}
@@ -716,8 +718,8 @@
 
     <div class="side-sec">
       <div class="side-h">View</div>
-      <button class="side-nav on" data-view="board">Scout Recommended</button>
-      <button class="side-nav" data-view="requested">Prospect Board</button>
+      <button class="side-nav on" data-view="requested">Prospect Board</button>
+      <button class="side-nav" data-view="board">Scout Recommended</button>
       <button class="side-nav" data-view="market">Production Market</button>
       <button class="side-nav" data-view="map">Map</button>
     </div>
@@ -749,8 +751,8 @@
   <div class="board">
     <div class="board-head">
       <div class="vtabs">
-        <button class="vtab on" data-view="board">Scout Recommended</button>
-        <button class="vtab" data-view="requested">Prospect Board</button>
+        <button class="vtab on" data-view="requested">Prospect Board</button>
+        <button class="vtab" data-view="board">Scout Recommended</button>
         <button class="vtab" data-view="market">Production Market</button>
         <button class="vtab" data-view="map">Map</button>
       </div>
@@ -1733,7 +1735,7 @@ function coordsOf(report){
 /* ============================================================
    VIEW STATE
    ============================================================ */
-let currentView = 'board';   // 'board' | 'map'
+let currentView = 'requested';   // 'requested' | 'board' | 'market' | 'map'
 let boardOrder  = null;      // coach's custom order, or null for InHome ranking
 let programKey  = 'DEFAULT';
 
