@@ -1941,7 +1941,7 @@ async function loadPerformances(){
     PERF_ERR = null;
   }catch(err){ PERF = []; PERF_ERR = err.message; }
 }
-let marketRange = '6w';       // '4w' | '6w' | 'season' — controls the index chart only
+let marketRange = 'season';   // '4w' | '6w' | 'season' — controls the index chart only; season so early weeks are never hidden
 
 function isoWeekLabel(d){
   const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -1989,7 +1989,7 @@ function marketTickerHTML(items){
   const cell = (it, i) => {
     const dir = it.chg==null ? 'flat' : it.chg>0 ? 'up' : it.chg<0 ? 'down' : 'flat';
     const arrow = dir==='up' ? '&#9650;' : dir==='down' ? '&#9660;' : '&middot;';
-    const chgTxt = it.chg==null ? 'NEW' : (it.chg>0?'+':'')+it.chg;
+    const chgTxt = it.chg==null ? '1 GM' : (it.chg>0?'+':'')+it.chg;
     return `<button type="button" class="xgt-item" data-tk="${i}">
       <b>${esc(it.sym)}</b>${it.price.toFixed(1)}
       <span class="xgt-chg ${dir}">${arrow} ${chgTxt}</span></button>`;
@@ -2406,7 +2406,7 @@ function marketRangeSlice(series, range){
   return series;
 }
 function marketRangeLabel(range){
-  return range==='4w' ? 'past 4 weeks' : range==='6w' ? 'past 6 weeks' : 'full season';
+  return range==='4w' ? 'last 4 games' : range==='6w' ? 'last 6 games' : 'full season';
 }
 
 function marketClassSelectHTML(rows){
@@ -2434,7 +2434,7 @@ function marketLevelSelectHTML(){
 }
 function marketRangeHTML(){
   return `<div class="xg-range">
-    ${['4w','6w','season'].map(r=>`<button class="xg-rbtn ${marketRange===r?'on':''}" data-mr="${r}">${r==='season'?'SEASON':r.toUpperCase()}</button>`).join('')}
+    ${['4w','6w','season'].map(r=>`<button class="xg-rbtn ${marketRange===r?'on':''}" data-mr="${r}">${r==='season'?'SEASON':'LAST '+r.replace('w',' GAMES')}</button>`).join('')}
   </div>`;
 }
 /* Sits at the top of the panel, above the index — what actually moves
@@ -2492,7 +2492,7 @@ function renderMarketDemo(){
         <div class="xg-idx-val">${idxNow.toFixed(1)}</div>
         <div class="xg-idx-chg">${
           idxChg==null
-            ? '<span class="xg-idx-pill" style="color:#7A8094;background:rgba(122,128,148,.14)">Not enough weeks yet</span>'
+            ? '<span class="xg-idx-pill" style="color:#7A8094;background:rgba(122,128,148,.14)">Moves after the 2nd game</span>'
             : `<span class="xg-idx-pill" style="color:${idxUp?'#00C87A':'#FF4D4D'};background:${idxUp?'rgba(0,200,122,.14)':'rgba(255,77,77,.14)'}">${idxUp?'&#9650;':'&#9660;'} ${idxChg>0?'+':''}${idxChg}</span><span style="color:#7A8094">${marketRangeLabel(marketRange)}</span>`
         }</div>
         <div class="xg-idx-sub">Weighted by Film 50 / Athletic 25 / Character 15 / Production 10</div>
@@ -2576,7 +2576,7 @@ function renderMarketView(){
         <div class="xg-idx-val">${idxNow.toFixed(1)}</div>
         <div class="xg-idx-chg">${
           idxChg==null
-            ? '<span class="xg-idx-pill" style="color:#7A8094;background:rgba(122,128,148,.14)">Not enough weeks yet</span>'
+            ? '<span class="xg-idx-pill" style="color:#7A8094;background:rgba(122,128,148,.14)">Moves after the 2nd game</span>'
             : `<span class="xg-idx-pill" style="color:${idxUp?'#00C87A':'#FF4D4D'};background:${idxUp?'rgba(0,200,122,.14)':'rgba(255,77,77,.14)'}">${idxUp?'&#9650;':'&#9660;'} ${idxChg>0?'+':''}${idxChg}</span><span style="color:#7A8094">${marketRangeLabel(marketRange)}</span>`
         }</div>
         <div class="xg-idx-sub">Each point is that game's InHome Production Grade (0-100): algorithm off the box score, reviewed by a scout. The index is the average across every tracked player.</div>
@@ -2603,7 +2603,7 @@ function renderMarketView(){
           <div class="xg-pos">${esc(x.pos||'')}</div>
           <div class="xg-price">${x.price.toFixed(1)}</div>
           <div>${x.chg==null
-              ? '<span class="xg-pct flat">New</span>'
+              ? '<span class="xg-pct flat" title="Moves after his second graded game">1 game</span>'
               : `<span class="xg-pct ${x.dir}">${x.chg>0?'&#9650;':x.chg<0?'&#9660;':'&middot;'} ${x.chg>0?'+':''}${x.chg}${x.pctv!=null?' ('+(x.pctv>0?'+':'')+x.pctv+'%)':''}</span>`}</div>
           <div>${marketSpark(x.series, 74, 24, col)}</div>
         </div>`;
