@@ -1621,7 +1621,10 @@ async function openPortal(prog){
      carry a display name ("Samford Football"). Match on the directory name. */
   PROGRAM_MATCH = (prog.school || prog.name || '').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
   PROGRAM_LABEL = prog.school || prog.name;
-  PROGRAM_CODE = code;
+  /* The access code is the key for this program's prospect board.
+     openPortal only receives the program object, so find its code. */
+  PROGRAM_CODE = '';
+  for(var _c in PROGRAMS){ if(PROGRAMS[_c] === prog){ PROGRAM_CODE = _c; break; } }
   REQUESTED = null; REQUESTED_ERR = null;
   loadOrder();
   document.getElementById('boardCnt').textContent = LIVE_URL ? 'Loading...' : '';
@@ -2577,7 +2580,7 @@ const REQUESTED_URL = LIVE_URL.replace(/\/list-reports$/, '/list-program-prospec
 const POS_ORDER = Object.keys(POSITIONS);
 
 async function loadRequested(){
-  if(!PROGRAM_CODE) return;
+  if(!PROGRAM_CODE){ REQUESTED = []; REQUESTED_ERR = 'No program code for this session. Sign out and enter your code again.'; return; }
   try{
     const res = await fetch(REQUESTED_URL + '?program=' + encodeURIComponent(PROGRAM_CODE), { cache:'no-store' });
     const data = await res.json();
