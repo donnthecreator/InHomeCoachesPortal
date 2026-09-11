@@ -2442,7 +2442,7 @@ function marketRangeHTML(){
    which stays at the bottom and is only about the data being sample data. */
 function marketExplainHTML(){
   return `<div class="xg-explain">
-    <b>How a score moves.</b> Every logged game gets a 0-100 production grade from InHome off the actual stat line and film. A big week moves a player up, a quiet one or a missed game moves him down. Tap a row for the week-by-week log with sources.
+    <b>How a grade is built.</b> Every game gets a 0-100 Production Grade in two layers. First the InHome algorithm scores the official box score, efficiency before volume, position by position, with small samples capped and turnovers penalized. Then an InHome scout reviews it against the film and adjusts where the box score misled. Price is the latest game, change is versus the game before, the line is the season. Tap a row for the game log with sources. A Production Grade is what he did this week, not a projection; the scouting report is.
   </div>`;
 }
 function wireMarketControls(host, onChange){
@@ -2579,7 +2579,7 @@ function renderMarketView(){
             ? '<span class="xg-idx-pill" style="color:#7A8094;background:rgba(122,128,148,.14)">Not enough weeks yet</span>'
             : `<span class="xg-idx-pill" style="color:${idxUp?'#00C87A':'#FF4D4D'};background:${idxUp?'rgba(0,200,122,.14)':'rgba(255,77,77,.14)'}">${idxUp?'&#9650;':'&#9660;'} ${idxChg>0?'+':''}${idxChg}</span><span style="color:#7A8094">${marketRangeLabel(marketRange)}</span>`
         }</div>
-        <div class="xg-idx-sub">Each point is that week's InHome production grade (0-100) from the game log. The index is the average across every tracked player.</div>
+        <div class="xg-idx-sub">Each point is that game's InHome Production Grade (0-100): algorithm off the box score, reviewed by a scout. The index is the average across every tracked player.</div>
       </div>
       <div class="xg-idx-chart">${marketSpark(idxSeries, 460, 100, idxUp===false?'#FF4D4D':'#00C87A')}</div>
     </div>
