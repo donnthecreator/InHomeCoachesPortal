@@ -651,6 +651,15 @@
   .pc-tier{color:#A0A0A0;}
   .rec-filter:hover{border-color:#A0A0A0;}
   .rec-filter.on{border-color:#F5F5F5;}
+
+  /* Prospect Board (requested list) */
+  .bcard.req{cursor:default;}
+  .bcard.req[role=button]{cursor:pointer;}
+  .bcard.req-pending{opacity:.62;}
+  .bcard.req-pending:hover{border-color:#2A2A2A; opacity:.8;}
+  .req-status{font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#777; margin-top:3px; white-space:nowrap;}
+  .req-status.done{color:#F5F5F5;}
+  .bcol-n{float:right; font-family:'Inter',sans-serif; font-size:11px; font-weight:700; color:#888;}
 </style>
 </head>
 <body>
@@ -707,7 +716,8 @@
 
     <div class="side-sec">
       <div class="side-h">View</div>
-      <button class="side-nav on" data-view="board">Prospect Board</button>
+      <button class="side-nav on" data-view="board">Scout Recommended</button>
+      <button class="side-nav" data-view="requested">Prospect Board</button>
       <button class="side-nav" data-view="market">Production Market</button>
       <button class="side-nav" data-view="map">Map</button>
     </div>
@@ -739,7 +749,8 @@
   <div class="board">
     <div class="board-head">
       <div class="vtabs">
-        <button class="vtab on" data-view="board">Board</button>
+        <button class="vtab on" data-view="board">Scout Recommended</button>
+        <button class="vtab" data-view="requested">Prospect Board</button>
         <button class="vtab" data-view="market">Production Market</button>
         <button class="vtab" data-view="map">Map</button>
       </div>
@@ -1492,6 +1503,9 @@ function filmLinkHTML(url){
 /* ============================================================
    GATE
    ============================================================ */
+let PROGRAM_CODE = '';       // access code the program signed in with
+let REQUESTED = null;        // program's requested prospect board, loaded on demand
+let REQUESTED_ERR = null;
 function tryEnter(raw){
   const code = (raw||"").trim().toUpperCase();
   const prog = PROGRAMS[code];
@@ -1607,6 +1621,8 @@ async function openPortal(prog){
      carry a display name ("Samford Football"). Match on the directory name. */
   PROGRAM_MATCH = (prog.school || prog.name || '').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
   PROGRAM_LABEL = prog.school || prog.name;
+  PROGRAM_CODE = code;
+  REQUESTED = null; REQUESTED_ERR = null;
   loadOrder();
   document.getElementById('boardCnt').textContent = LIVE_URL ? 'Loading...' : '';
   renderCurrentView();
@@ -2548,6 +2564,96 @@ function renderMarketView(){
   wireMarketControls(host, renderMarketView);
 }
 
+/* ==================================================================
+   PROSPECT BOARD (requested)
+   The list the program handed us, with scouting status per player.
+   Data: list-program-prospects on the scout site, keyed by the access
+   code. A player with a filed report opens that report; one without
+   shows "Not yet scouted". Scout Recommended is the other tab.
+================================================================== */
+const REQUESTED_URL = LIVE_URL.replace(/\/list-reports$/, '/list-program-prospects');
+/* Column order: the scout-side POSITIONS order first, then anything else
+   (JACK, SAF, ILB and other codes a program may use) alphabetically. */
+const POS_ORDER = Object.keys(POSITIONS);
+
+async function loadRequested(){
+  if(!PROGRAM_CODE) return;
+  try{
+    const res = await fetch(REQUESTED_URL + '?program=' + encodeURIComponent(PROGRAM_CODE), { cache:'no-store' });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    REQUESTED = data.board || [];
+    REQUESTED_ERR = null;
+  }catch(err){
+    REQUESTED = [];
+    REQUESTED_ERR = err.message;
+  }
+}
+
+function reportIndexFor(reportId){
+  if(!reportId) return -1;
+  for(let i=0;i<REPORTS.length;i++){ if(String(REPORTS[i].id) === String(reportId)) return i; }
+  return -1;
+}
+
+function renderRequestedView(){
+  const host = document.getElementById('viewHost');
+  if(REQUESTED === null){
+    host.innerHTML = '<div class="empty">Loading your prospect board...</div>';
+    loadRequested().then(function(){ if(currentView==='requested') renderCurrentView(); });
+    return;
+  }
+  if(REQUESTED_ERR){
+    host.innerHTML = '<div class="empty">Could not load your prospect board.<br><span style="font-size:12px;color:#666">' + esc(REQUESTED_ERR) + '</span></div>';
+    return;
+  }
+  if(!REQUESTED.length){
+    host.innerHTML = '<div class="empty">No prospects on your board yet.<br><span style="font-size:12px;color:#666">Send InHome a list and it will appear here with scouting status.</span></div>';
+    return;
+  }
+
+  /* Group by position, keep the scout-side position order where known. */
+  const byPos = {};
+  REQUESTED.forEach(function(x){ const k = x.position || 'ATH'; (byPos[k] = byPos[k] || []).push(x); });
+  const order = Object.keys(byPos).sort(function(a,b){
+    const ia = POS_ORDER.indexOf(a), ib = POS_ORDER.indexOf(b);
+    return (ia<0?99:ia) - (ib<0?99:ib) || a.localeCompare(b);
+  });
+
+  host.innerHTML = '<div class="bcols">' + order.map(function(pos){
+    const list = byPos[pos].slice().sort(function(a,b){
+      if(a.status!==b.status) return a.status==='scouted' ? -1 : 1;
+      return (Number(b.inhomeScore)||0) - (Number(a.inhomeScore)||0) || a.prospect.localeCompare(b.prospect);
+    });
+    const done = list.filter(function(x){return x.status==='scouted';}).length;
+    return '<div class="bcol">'
+      + '<div class="bcol-head">' + esc(pos) + '<span class="bcol-n">' + done + '/' + list.length + '</span></div>'
+      + list.map(function(x){
+          const idx = reportIndexFor(x.reportId);
+          const clickable = x.status==='scouted' && idx >= 0;
+          const photo = x.headshotUrl ? '<img class="bcard-photo" src="' + esc(x.headshotUrl) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+          const meta2 = [x.classYear ? 'Class of ' + esc(x.classYear) : '', x.homeState ? esc(x.homeState) : ''].filter(Boolean).join(' · ');
+          const right = x.status==='scouted'
+            ? '<div class="bcard-score">' + (x.inhomeScore!=null ? Number(x.inhomeScore).toFixed(1) : '—') + '</div>'
+              + '<div class="req-status done">' + esc(x.recommendationTier || 'Report ready') + '</div>'
+            : '<div class="req-status">Not yet scouted</div>';
+          return '<div class="bcard req' + (clickable ? '' : ' req-pending') + '"'
+            + (clickable ? ' data-i="' + idx + '" tabindex="0" role="button" onclick="openReport(' + idx + ')"' : '')
+            + '>'
+            + photo
+            + '<div class="bcard-body">'
+            +   '<div class="bcard-name">' + esc(x.prospect) + '</div>'
+            +   '<div class="bcard-meta">' + esc(x.school||'') + '</div>'
+            +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
+            +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
+            + '</div>'
+            + '<div class="bcard-right">' + right + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }).join('') + '</div>';
+}
+
 function renderBoardView(){
   const host = document.getElementById('viewHost');
   const cols = positionsPresent();
@@ -3055,7 +3161,8 @@ function renderCurrentView(){
   renderSidePanel();
   const shown = REPORTS.filter(function(r){ return matchesClass(r) && matchesRec(r); }).length;
   document.getElementById('boardCnt').textContent =
-    (currentView==='market' && MARKET_DEMO) ? 'Preview data'
+    currentView==='requested' ? (REQUESTED ? REQUESTED.length + ' requested · ' + REQUESTED.filter(function(x){return x.status==='scouted';}).length + ' evaluated' : 'Loading...')
+    : (currentView==='market' && MARKET_DEMO) ? 'Preview data'
     : recFilter ? shown + ' recommended to you'
     : classFilter==='ALL' ? REPORTS.length + ' evaluated'
                           : shown + ' in class of ' + classFilter;
@@ -3063,6 +3170,7 @@ function renderCurrentView(){
   document.body.classList.toggle('mapview', currentView==='map' || currentView==='market');
   if(currentView==='map') renderMapView();
   else if(currentView==='market') renderMarketView();
+  else if(currentView==='requested') renderRequestedView();
   else renderBoardView();
   updateOrderBanner();
 }
