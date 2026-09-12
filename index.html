@@ -1627,7 +1627,8 @@ function renderHomeTicker(){
     items = marketDemoAllRows();
   } else {
     if(PERF === null){ loadPerformances().then(renderHomeTicker); host.innerHTML = ''; return; }
-    items = marketLiveAllRows();
+    /* Ticker only carries players with a real move: two graded games or more. */
+    items = marketLiveAllRows().filter(x => x.chg != null);
     if(!items.length){ host.innerHTML = ''; return; }
   }
   host.innerHTML = marketTickerHTML(items);
