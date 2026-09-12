@@ -662,6 +662,20 @@
   .req-status{font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#777; margin-top:3px; white-space:nowrap;}
   .req-status.done{color:#F5F5F5;}
   .bcol-n{float:right; font-family:'Inter',sans-serif; font-size:11px; font-weight:700; color:#888;}
+
+  /* ---------- MOVERS (top risers / fallers) ---------- */
+  .xg-movers{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;}
+  @media(max-width:720px){ .xg-movers{grid-template-columns:1fr;} }
+  .xg-mv{background:#0F1116; border:1px solid #212430; border-radius:13px; padding:14px 16px;}
+  .xg-mv h4{margin:0 0 3px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#7A8094;}
+  .xg-mv .why{font-size:10.5px; color:#5F6472; margin-bottom:10px;}
+  .xg-mv-row{display:grid; grid-template-columns:18px 1fr auto auto; gap:9px; align-items:center;
+      padding:7px 0; border-top:1px solid #1B1E27; cursor:pointer;}
+  .xg-mv-rank{font-family:'IBM Plex Mono',monospace; font-size:11px; color:#5F6472;}
+  .xg-mv-name{min-width:0;}
+  .xg-mv-name b{display:block; font-size:12.5px; font-weight:700; color:#EDEFF4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .xg-mv-name span{font-size:10.5px; color:#7A8094;}
+  .xg-mv-price{font-family:'IBM Plex Mono',monospace; font-size:13px; color:#EDEFF4;}
 </style>
 </head>
 <body>
@@ -2446,6 +2460,31 @@ function marketLevelSelectHTML(){
     <option value="HS"${marketLevelFilter==='HS'?' selected':''}>High school only</option>
   </select>`;
 }
+/* Top risers and fallers off the change between a player's last two
+   graded games. A player with one game is not eligible to move. */
+let MOVERS = { up: [], down: [] };
+function marketMoversHTML(rows){
+  const moved = rows.filter(p=>p.chg!=null && p.chg!==0);
+  const risers = moved.filter(p=>p.chg>0).sort((a,b)=>b.chg-a.chg).slice(0,5);
+  const fallers = moved.filter(p=>p.chg<0).sort((a,b)=>a.chg-b.chg).slice(0,5);
+  MOVERS = { up: risers, down: fallers };
+  const col = (title, why, list, cls) => `
+    <div class="xg-mv">
+      <h4>${title}</h4>
+      <div class="why">${why}</div>
+      ${list.length ? list.map((p,i)=>`
+        <div class="xg-mv-row" data-mv="${i}" data-mvside="${cls}">
+          <span class="xg-mv-rank">${i+1}</span>
+          <span class="xg-mv-name"><b>${esc(p.name)}</b><span>${esc(p.pos||'')} &middot; ${esc(p.school||'')}</span></span>
+          <span class="xg-mv-price">${p.price.toFixed(1)}</span>
+          <span class="xg-pct ${cls}">${p.chg>0?'&#9650;':'&#9660;'} ${p.chg>0?'+':''}${p.chg}</span>
+        </div>`).join('') : '<div class="why">Nobody has two graded games yet.</div>'}
+    </div>`;
+  return `<div class="xg-movers">
+    ${col('Top risers', 'Biggest jump from his previous game', risers, 'up')}
+    ${col('Top fallers', 'Biggest drop from his previous game', fallers, 'down')}
+  </div>`;
+}
 function marketRangeHTML(){
   return `<div class="xg-range">
     ${['4w','6w','season'].map(r=>`<button class="xg-rbtn ${marketRange===r?'on':''}" data-mr="${r}">${r==='season'?'SEASON':'LAST '+r.replace('w',' GAMES')}</button>`).join('')}
@@ -2460,6 +2499,12 @@ function marketExplainHTML(){
   </div>`;
 }
 function wireMarketControls(host, onChange){
+  host.querySelectorAll('[data-mv]').forEach(row=>
+    row.addEventListener('click', ()=>{
+      const side = row.dataset.mvside === 'up' ? 'up' : 'down';
+      const entry = MOVERS[side][Number(row.dataset.mv)];
+      if(entry) openMarketDetail(entry);
+    }));
   host.querySelectorAll('[data-mf]').forEach(btn=>
     btn.addEventListener('click', ()=>{ marketFilter = btn.dataset.mf; onChange(); }));
   host.querySelectorAll('[data-mr]').forEach(btn=>
@@ -2514,7 +2559,9 @@ function renderMarketDemo(){
       <div class="xg-idx-chart">${marketSpark(idxSeries, 460, 100, idxUp===false?'#FF4D4D':'#00C87A')}</div>
     </div>
     ${marketRangeHTML()}
+    ${marketMoversHTML(scoped)}
     <div class="xg-filters">
+      ${marketLevelSelectHTML()}
       <button class="xg-fbtn ${marketFilter==='all'?'on':''}" data-mf="all">All</button>
       <button class="xg-fbtn ${marketFilter==='up'?'on':''}" data-mf="up">Rising</button>
       <button class="xg-fbtn ${marketFilter==='down'?'on':''}" data-mf="down">Falling</button>
@@ -2598,12 +2645,13 @@ function renderMarketView(){
       <div class="xg-idx-chart">${marketSpark(idxSeries, 460, 100, idxUp===false?'#FF4D4D':'#00C87A')}</div>
     </div>
     ${marketRangeHTML()}
+    ${marketMoversHTML(scoped)}
     <div class="xg-filters">
+      ${marketLevelSelectHTML()}
       <button class="xg-fbtn ${marketFilter==='all'?'on':''}" data-mf="all">All</button>
       <button class="xg-fbtn ${marketFilter==='up'?'on':''}" data-mf="up">Rising</button>
       <button class="xg-fbtn ${marketFilter==='down'?'on':''}" data-mf="down">Falling</button>
       <button class="xg-fbtn ${marketFilter==='flat'?'on':''}" data-mf="flat">No move yet</button>
-      ${marketLevelSelectHTML()}
       ${marketClassSelectHTML(allRows)}
       ${marketPosSelectHTML(allRows)}
       <span class="xg-count">${rows.length} of ${scoped.length}</span>
