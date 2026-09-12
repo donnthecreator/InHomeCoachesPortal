@@ -680,6 +680,9 @@
   .mk-face{width:32px; height:32px; border-radius:8px; object-fit:cover; background:#1B1E27; border:1px solid #212430; flex:0 0 auto;}
   .mk-logo{width:15px; height:15px; object-fit:contain; vertical-align:-3px; margin-right:4px;}
   .xgm-face{width:56px; height:56px; border-radius:12px; object-fit:cover; background:#1B1E27; border:1px solid #212430;}
+
+  .vchk{display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%;
+        background:#1D9BF0; color:#fff; font-size:9px; font-weight:900; margin-left:4px; vertical-align:1px;}
 </style>
 </head>
 <body>
@@ -3021,6 +3024,27 @@ const PROMPT_Q = {
   projection:'Best-case version of him in three years, and what has to happen?',
   nextlook:'What would he still need to show before the scout stakes his name on him?'
 };
+/* A blue check next to anything InHome confirmed at the source. */
+function vchk(r, field){
+  const v = (r.verifications||{})[field];
+  return v ? `<span class="vchk" title="Verified${v.source?' \u00b7 '+esc(v.source):''}${v.at?' \u00b7 '+esc(v.at):''}">&#10003;</span>` : '';
+}
+/* Interview and Football IQ results filed by the athlete himself. */
+const IQ_LABEL = { iq:'Football IQ Assessment', interview:'Athlete Interview' };
+function assessmentHTML(r){
+  const list = r.assessments || []; if(!list.length) return '';
+  return list.map(a => {
+    const ans = a.answers || {};
+    const keys = Object.keys(ans).filter(k => typeof ans[k] === 'string' && ans[k].trim().length > 12 && !k.startsWith('clip_'));
+    return `<div class="sec">
+      <div class="sec-h"><span class="sec-num">&#9679;</span><h3>${esc(IQ_LABEL[a.kind]||'Assessment')}</h3>
+        <span class="wt">${a.pct!=null ? a.pct + '% \u00b7 ' + a.correct + '/' + a.total : 'completed'}${a.completed?' \u00b7 '+esc(a.completed):''}</span></div>
+      ${a.pct!=null ? `<div class="iq-wrap"><div class="iq-top"><span style="font-weight:600;font-size:13px;color:var(--mute)">Answered by the athlete, film and multiple choice auto-scored</span><span class="iq-val">${a.pct}%</span></div>
+        <div class="iq-track"><div class="iq-fill" style="width:${a.pct}%"></div></div></div>` : ''}
+      ${keys.slice(0, 8).map(k => `<div style="margin-top:10px;"><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:700;margin-bottom:3px;">${esc(k.replace(/_/g,' '))}</div><div class="narrative" style="margin:0;">${esc(ans[k])}</div></div>`).join('')}
+    </div>`;
+  }).join('');
+}
 function promptsHTML(r){
   const p = (r.raw && r.raw.prompts) || {};
   const keys = Object.keys(PROMPT_Q).filter(k => p[k]);
@@ -3714,6 +3738,7 @@ function _openReportInner(i){
       <div class="sec"><div class="sec-h"><span class="sec-num">5</span><h3>Football IQ</h3><span class="wt">standalone gauge</span></div>
         <div class="iq-wrap"><div class="iq-top"><span style="font-weight:600;font-size:13px;color:var(--mute)">Standalone, not in composite</span><span class="iq-val">${r.footballIQ}/10</span></div>
         <div class="iq-track"><div class="iq-fill" style="width:${iqPct}%"></div></div></div></div>
+      ${assessmentHTML(r)}
       ${consensusHTML(r)}
       <div class="sec"><div class="sec-h"><span class="sec-num">6</span><h3>Scout Narrative</h3><span class="wt">${esc(r.scoutName||'')}</span></div>
         ${promptsHTML(r)}
