@@ -676,6 +676,10 @@
   .xg-mv-name b{display:block; font-size:12.5px; font-weight:700; color:#EDEFF4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .xg-mv-name span{font-size:10.5px; color:#7A8094;}
   .xg-mv-price{font-family:'IBM Plex Mono',monospace; font-size:13px; color:#EDEFF4;}
+
+  .mk-face{width:32px; height:32px; border-radius:8px; object-fit:cover; background:#1B1E27; border:1px solid #212430; flex:0 0 auto;}
+  .mk-logo{width:15px; height:15px; object-fit:contain; vertical-align:-3px; margin-right:4px;}
+  .xgm-face{width:56px; height:56px; border-radius:12px; object-fit:cover; background:#1B1E27; border:1px solid #212430;}
 </style>
 </head>
 <body>
@@ -2127,7 +2131,7 @@ function marketBigChart(series, w, h){
    band and the Market tab itself, so the chart's green and red always
    read correctly. */
 function openMarketDetail(entry){
-  const { sym, name, pos, cls, school, series, price, chg, pctv, dir, reportIndex, log, social } = entry;
+  const { sym, name, pos, cls, school, series, price, chg, pctv, dir, reportIndex, log, social, headshotUrl, logoUrl } = entry;
   const col = dir==='up' ? '#00C87A' : dir==='down' ? '#FF4D4D' : '#7A8094';
   const modal = document.getElementById('modal');
   const overlay = document.getElementById('overlay');
@@ -2174,10 +2178,13 @@ function openMarketDetail(entry){
   modal.innerHTML = `<div class="xgm">
     <button class="xgm-close" id="xgmClose" aria-label="Close">&times;</button>
     <div class="xgm-head">
-      <div>
-        <div class="xgm-sym">${esc(sym)} <span>${esc(pos||'')}${cls?' &middot; \'' + String(cls).slice(2):''}</span></div>
-        <div class="xgm-name">${esc(name)}</div>
-        <div class="xgm-school">${esc(school||'')}</div>
+      <div style="display:flex;gap:12px;align-items:center;">
+        ${headshotUrl ? `<img class="xgm-face" src="${esc(headshotUrl)}" alt="" onerror="this.style.display='none'">` : ''}
+        <div>
+          <div class="xgm-sym">${esc(sym)} <span>${esc(pos||'')}${cls?' &middot; \'' + String(cls).slice(2):''}</span></div>
+          <div class="xgm-name">${esc(name)}</div>
+          <div class="xgm-school">${logoUrl?`<img class="mk-logo" src="${esc(logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(school||'')}</div>
+        </div>
       </div>
       <div class="xgm-price-block">
         <div class="xgm-price">${price.toFixed(1)}</div>
@@ -2432,6 +2439,7 @@ function marketLiveAllRows(){
       const ri = reportIdx[p.nameKey || nameKeyOf(p.name)];
       return {sym: marketSymbol(p.name), name:p.name, pos:p.position, cls:p.classYear,
               school: (p.school||'') + (p.level==='JUCO' ? ' (JUCO)' : ''), level:p.level||'HS',
+              headshotUrl: p.headshotUrl || null, logoUrl: p.logoUrl || null,
               series, price, chg, pctv, dir, reportIndex: ri===undefined ? null : ri, log};
     })
     .filter(Boolean)
@@ -2508,7 +2516,7 @@ function marketMoversHTML(rows){
       ${list.length ? list.map((p,i)=>`
         <div class="xg-mv-row" data-mv="${i}" data-mvside="${cls}">
           <span class="xg-mv-rank">${i+1}</span>
-          <span class="xg-mv-name"><b>${esc(p.name)}</b><span>${esc(p.pos||'')} &middot; ${esc(p.school||'')}</span></span>
+          <span class="xg-mv-name" style="display:flex;align-items:center;gap:8px;">${p.headshotUrl ? `<img class="mk-face" style="width:26px;height:26px;" src="${esc(p.headshotUrl)}" alt="" onerror="this.style.visibility='hidden'">` : ''}<span style="min-width:0;"><b>${esc(p.name)}</b><span>${p.logoUrl?`<img class="mk-logo" src="${esc(p.logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(p.pos||'')} &middot; ${esc(p.school||'')}</span></span></span>
           <span class="xg-mv-price">${p.price.toFixed(1)}</span>
           <span class="xg-pct ${cls}">${p.chg>0?'&#9650;':'&#9660;'} ${p.chg>0?'+':''}${p.chg}</span>
         </div>`).join('') : '<div class="why">Nobody has two graded games yet.</div>'}
@@ -2694,7 +2702,10 @@ function renderMarketView(){
       <div>${rows.length ? rows.map((x,ri)=>{
         const col = x.dir==='up' ? '#00C87A' : x.dir==='down' ? '#FF4D4D' : '#4B5063';
         return `<div class="xg-row ${x.dir}" data-mi="${ri}">
-          <div class="xg-sym"><b>${esc(x.sym)}</b><span>${esc(x.name)} &middot; ${esc(x.school||'')}</span></div>
+          <div class="xg-sym" style="flex-direction:row;align-items:center;gap:9px;">
+            ${x.headshotUrl ? `<img class="mk-face" src="${esc(x.headshotUrl)}" alt="" onerror="this.style.visibility='hidden'">` : ''}
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(x.name)} &middot; ${esc(x.school||'')}</span></div>
+          </div>
           <div class="xg-pos">${esc(x.pos||'')}</div>
           <div class="xg-price">${x.price.toFixed(1)}</div>
           <div>${x.chg==null
@@ -2792,7 +2803,7 @@ function renderRequestedView(){
             + photo
             + '<div class="bcard-body">'
             +   '<div class="bcard-name">' + esc(x.prospect) + '</div>'
-            +   '<div class="bcard-meta">' + esc(x.school||'') + '</div>'
+            +   '<div class="bcard-meta">' + (x.logoUrl ? '<img class="mk-logo" src="' + esc(x.logoUrl) + '" alt="" onerror="this.remove()">' : '') + esc(x.school||'') + '</div>'
             +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
             +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
             + '</div>'
