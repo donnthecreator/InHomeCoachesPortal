@@ -776,6 +776,19 @@
 </div>
 
 
+<!-- Netlify Forms registration: this hidden form makes Netlify collect
+     "portal-request" submissions and email them (Site -> Forms ->
+     Notifications). sendRequest() posts the same field names. -->
+<form name="portal-request" netlify netlify-honeypot="bot-field" hidden>
+  <input type="text" name="bot-field">
+  <input type="text" name="program">
+  <input type="text" name="from">
+  <input type="text" name="request">
+  <input type="text" name="prospect">
+  <input type="text" name="ncaa_period">
+  <textarea name="details"></textarea>
+</form>
+
 <!-- ===================== REQUEST MODAL ===================== -->
 <div class="overlay" id="reqOverlay" role="dialog" aria-modal="true" onclick="if(event.target===this)closeRequest()">
   <div class="req-card">
@@ -1991,7 +2004,7 @@ function marketTickerHTML(items){
     const arrow = dir==='up' ? '&#9650;' : dir==='down' ? '&#9660;' : '&middot;';
     const chgTxt = it.chg==null ? '1 GM' : (it.chg>0?'+':'')+it.chg;
     return `<button type="button" class="xgt-item" data-tk="${i}">
-      <b>${esc(it.sym)}</b>${it.price.toFixed(1)}
+      <b>${esc(it.sym)}</b><span style="color:var(--mute);font-size:9px;margin-right:4px">${esc(it.pos||'')}</span>${it.price.toFixed(1)}
       <span class="xgt-chg ${dir}">${arrow} ${chgTxt}</span></button>`;
   };
   const one = items.map(cell).join('');
@@ -2359,7 +2372,8 @@ function marketLiveAllRows(){
       if(!graded.length) return null;
       const series = graded.map(e=>({ w: e.date, v: +Number(e.grade).toFixed(1), d: e.date }));
       const log = graded.map(e=>{
-        const d = new Date(e.date);
+        const m = String(e.date||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+        const d = m ? new Date(+m[1], +m[2]-1, +m[3]) : new Date(e.date);
         const when = isNaN(d) ? e.date : d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
         return when + ' &middot; ' + (e.statLine ? esc(e.statLine) : 'no stat line logged') + (e.link ? ' <a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="color:var(--mute)">source</a>' : '');
       });
@@ -3020,7 +3034,7 @@ function updateOrderBanner(){
    sendRequest() with a POST to a Netlify function; nothing else
    changes.
 ================================================================== */
-var REQUEST_EMAIL = "support@thelabusa.org";
+var REQUEST_EMAIL = "drlee@inhomerecruiting.com";
 
 var REQUEST_TYPES = {
   film: {
@@ -3160,10 +3174,32 @@ function sendRequest(kind){
     + 'Details:\n' + (msg.trim() || '(none)') + '\n\n'
     + '--\nSent from the InHome Program Portal';
 
-  window.location.href = 'mailto:' + REQUEST_EMAIL
-    + '?subject=' + encodeURIComponent(subject)
-    + '&body='    + encodeURIComponent(body);
-  closeRequest();
+  /* Deliver through Netlify Forms so it lands in InHome's inbox without
+     the coach's mail client being involved. If that fails (offline, form
+     not provisioned yet), fall back to the old mailto. */
+  var fd = new URLSearchParams();
+  fd.set('form-name', 'portal-request');
+  fd.set('program', program);
+  fd.set('from', from || '(not given)');
+  fd.set('request', t.label);
+  fd.set('prospect', who || '(not specified)');
+  fd.set('ncaa_period', ncaaPeriod().period || 'outside loaded calendar');
+  fd.set('details', msg.trim() || '(none)');
+  var btn = document.querySelector('#reqBody button.req-send');
+  if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
+  fetch('/', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: fd.toString() })
+    .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return true; })
+    .then(function(){
+      var bodyEl = document.getElementById('reqBody');
+      if(bodyEl) bodyEl.innerHTML = '<div style="padding:26px 6px 10px;text-align:center"><div style="font-family:\'Anton\',sans-serif;font-size:22px;margin-bottom:8px">Request sent</div><div style="color:var(--mute);font-size:13px;line-height:1.5">' + esc(t.label) + (who ? ' for ' + esc(who) : '') + '. InHome will follow up' + (from ? ' at ' + esc(from) : '') + '.</div><button class="req-send" onclick="closeRequest()" style="margin-top:18px">Done</button></div>';
+      else closeRequest();
+    })
+    .catch(function(){
+      window.location.href = 'mailto:' + REQUEST_EMAIL
+        + '?subject=' + encodeURIComponent(subject)
+        + '&body='    + encodeURIComponent(body);
+      closeRequest();
+    });
 }
 
 /* keep the side panel in step with the school and the board */
