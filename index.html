@@ -2869,7 +2869,7 @@ function renderOfflineMap(placed){
   }).join(' ');
   const pins = placed.map(({r,i,c})=>{
     const p = project(c.lat, c.lng);
-    const s = scoreReport(r);
+    const s = i>=0 ? scoreReport(r) : { composite: 0 };
     return `<g style="cursor:pointer" onclick="window._openReportFromMap(${i})">
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="14" fill="#FF0000" stroke="#fff" stroke-width="2"/>
       <text x="${p.x.toFixed(1)}" y="${(p.y+3.5).toFixed(1)}" fill="#fff" font-size="9" font-weight="700" text-anchor="middle" style="font-family:Anton,sans-serif;pointer-events:none">${esc(r.position)}</text>
@@ -2885,16 +2885,40 @@ function renderOfflineMap(placed){
   el.style.position = 'relative';
 }
 
+const MAP_URL = LIVE_URL.replace(/\/list-reports$/, '/list-map');
+let MAP_PINS = null;
+async function loadMapPins(){
+  try{
+    const res = await fetch(MAP_URL, { cache:'no-store' });
+    const d = await res.json();
+    MAP_PINS = d.pins || [];
+  }catch(e){ MAP_PINS = []; }
+}
 function renderMapView(){
   const host = document.getElementById('viewHost');
+  if(MAP_PINS === null){
+    host.innerHTML = '<div class="empty">Loading the prospect map...</div>';
+    loadMapPins().then(function(){ if(currentView==='map') renderCurrentView(); });
+    return;
+  }
+  /* Every prospect in the system: scouted, on a program board, or on the
+     performance log. Scouted players carry their report so the popup can
+     open it; everyone else gets a lighter card. */
+  const byId = {}; REPORTS.forEach((r,i)=>{ if(r.id!=null) byId[String(r.id)] = i; });
   const placed = [], unplaced = [];
-  REPORTS.forEach((r,i)=>{ if(!matchesClass(r)) return; const c=coordsOf(r); if(c) placed.push({r,i,c}); else unplaced.push({r,i}); });
+  MAP_PINS.forEach(p=>{
+    const ri = p.reportId!=null ? byId[String(p.reportId)] : undefined;
+    const r = ri!==undefined ? REPORTS[ri] : { prospect:p.name, position:p.position||'', archetype:'', classYear:p.classYear||'', school:p.school||'', _pin:p };
+    if(ri!==undefined && !matchesClass(r)) return;
+    if(p.lat!=null && p.lng!=null) placed.push({ r, i: ri!==undefined ? ri : -1, c:{lat:p.lat, lng:p.lng}, pin:p });
+    else unplaced.push({ r, i:-1 });
+  });
 
   if(_leafletMap){ try{ _leafletMap.remove(); }catch(e){} _leafletMap=null; }
 
   host.innerHTML = `<div class="mapwrap" style="position:relative;">
     <div id="leafletMap"></div>
-    ${unplaced.length?`<div style="padding:8px 14px;font-size:11px;color:#888">${unplaced.length} prospect(s) missing coordinates</div>`:''}
+    <div style="padding:8px 14px;font-size:11px;color:#888">${placed.length} prospects on the map${unplaced.length?` &middot; ${unplaced.length} not placed yet`:''} &middot; faded pins are placed at the school</div>
   </div>`;
 
   /* -----------------------------------------------------------
@@ -2923,12 +2947,17 @@ function renderMapView(){
       streetViewControl:false, mapTypeControl:false, fullscreenControl:true
     });
     const info = new google.maps.InfoWindow();
-    placed.forEach(({r,i,c})=>{
-      const s = scoreReport(r);
+    const seenAt = {};
+    placed.forEach(({r,i,c,pin})=>{
+      const s = i>=0 ? scoreReport(r) : null;
+      const k = c.lat.toFixed(3)+','+c.lng.toFixed(3); const n = (seenAt[k]=(seenAt[k]||0)+1);
+      const ang = n*2.399, rad = n>1 ? 0.012*Math.sqrt(n) : 0;
+      const pos = {lat:c.lat+Math.sin(ang)*rad, lng:c.lng+Math.cos(ang)*rad};
+      const col = i>=0 ? '#FF0000' : pin.status==='board' ? '#FF0000' : pin.status==='tracked' ? '#E0A419' : '#8A8A8A';
       const m = new google.maps.Marker({
-        position:{lat:c.lat,lng:c.lng}, map,
-        label:{text:r.position, color:'#fff', fontSize:'11px', fontWeight:'700'},
-        icon:{path:google.maps.SymbolPath.CIRCLE, scale:18, fillColor:'#FF0000', fillOpacity:1, strokeColor:'#fff', strokeWeight:2},
+        position:pos, map,
+        label:{text:(r.position||'').slice(0,3), color:'#fff', fontSize:'10px', fontWeight:'700'},
+        icon:{path:google.maps.SymbolPath.CIRCLE, scale:i>=0?18:14, fillColor:col, fillOpacity:pin.exact?1:0.55, strokeColor:'#fff', strokeWeight:i>=0?2:1},
         title:r.prospect
       });
       m.addListener('click', ()=>{
@@ -2972,7 +3001,7 @@ function renderMapView(){
       html:`<div style="background:#FF0000;color:#fff;font-family:Anton,sans-serif;font-size:11px;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.6);cursor:pointer">${esc(pos)}</div>`,
       iconSize:[38,38], iconAnchor:[19,38], popupAnchor:[0,-40]});
     placed.forEach(({r,i,c})=>{
-      const s = scoreReport(r);
+      const s = i>=0 ? scoreReport(r) : null;
       L.marker([c.lat,c.lng],{icon:makeIcon(r.position)}).addTo(_leafletMap)
         .bindPopup(popupHTML(r,i,s), {maxWidth:210});
     });
@@ -2983,7 +3012,17 @@ function renderMapView(){
   }
 
   function popupHTML(r,i,s){
-    return `<div style="font-family:sans-serif;width:185px">
+    const pin = r._pin || (placed.find(x=>x.r===r)||{}).pin || {};
+    const face = pin.headshotUrl ? `<img src="${esc(pin.headshotUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;float:right;margin-left:6px" onerror="this.style.display='none'">` : '';
+    if(i < 0 || !s){
+      return `<div style="font-family:sans-serif;width:185px">${face}
+        <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:2px">${esc(r.prospect)}</div>
+        <div style="font-size:11px;color:#555">${esc(r.position||'')}${r.classYear?' · Class of '+esc(r.classYear):''}</div>
+        <div style="font-size:11px;color:#555;margin-bottom:6px">${esc(r.school||'')}${pin.level?' · '+esc(pin.level):''}</div>
+        <div style="font-size:10px;color:#888">${pin.status==='board' ? 'On your prospect board · not yet scouted' : pin.status==='tracked' ? 'Tracked on the Production Market' : 'Prospect · not yet scouted'}${pin.exact ? '' : ' · placed at the school'}</div>
+      </div>`;
+    }
+    return `<div style="font-family:sans-serif;width:185px">${face}
       <div style="font-size:14px;font-weight:700;color:#FF0000;margin-bottom:2px">${esc(r.prospect)}</div>
       <div style="font-size:11px;color:#555">${esc(r.position)} · ${esc(r.archetype||'')} · ${esc(r.classYear||'')}</div>
       <div style="font-size:11px;color:#555;margin-bottom:8px">${esc(r.school||'')}</div>
