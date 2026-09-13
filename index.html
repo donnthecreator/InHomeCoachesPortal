@@ -3041,6 +3041,11 @@ function assessmentHTML(r){
         <span class="wt">${a.pct!=null ? a.pct + '% \u00b7 ' + a.correct + '/' + a.total : 'completed'}${a.completed?' \u00b7 '+esc(a.completed):''}</span></div>
       ${a.pct!=null ? `<div class="iq-wrap"><div class="iq-top"><span style="font-weight:600;font-size:13px;color:var(--mute)">Answered by the athlete, film and multiple choice auto-scored</span><span class="iq-val">${a.pct}%</span></div>
         <div class="iq-track"><div class="iq-fill" style="width:${a.pct}%"></div></div></div>` : ''}
+      ${a.diagnosis ? `<div style="margin-top:10px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">${(a.diagnosis.categories||[]).map(c=>`<span class="chip" style="background:transparent;border:1px solid ${c.pct>=80?'#00C87A':c.pct<60?'#FF4D4D':'#2A2A2A'};color:#EDEDED;font-size:11px;">${esc(c.name)} ${c.correct}/${c.total}</span>`).join('')}</div>
+        <div class="narrative" style="margin:0;">${esc(a.diagnosis.summary)}${a.diagnosis.profile?'<br><br>'+esc(a.diagnosis.profile):''}</div>
+        <div style="font-size:10.5px;color:#7A8094;margin-top:6px;">${esc(a.diagnosis.note||'')}</div>
+      </div>` : ''}
       ${keys.slice(0, 8).map(k => `<div style="margin-top:10px;"><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:700;margin-bottom:3px;">${esc(k.replace(/_/g,' '))}</div><div class="narrative" style="margin:0;">${esc(ans[k])}</div></div>`).join('')}
     </div>`;
   }).join('');
