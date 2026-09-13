@@ -3030,7 +3030,7 @@ function vchk(r, field){
   return v ? `<span class="vchk" title="Verified${v.source?' \u00b7 '+esc(v.source):''}${v.at?' \u00b7 '+esc(v.at):''}">&#10003;</span>` : '';
 }
 /* Interview and Football IQ results filed by the athlete himself. */
-const IQ_LABEL = { iq:'Football IQ Assessment', interview:'Athlete Interview' };
+const IQ_LABEL = { iq:'Football IQ Assessment', interview:'Athlete Interview', full:'Athlete Assessment' };
 function assessmentHTML(r){
   const list = r.assessments || []; if(!list.length) return '';
   return list.map(a => {
