@@ -683,6 +683,22 @@
 
   .vchk{display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%;
         background:#1D9BF0; color:#fff; font-size:9px; font-weight:900; margin-left:4px; vertical-align:1px;}
+
+  .plink{cursor:pointer; border-bottom:1px dotted transparent;}
+  .plink:hover{border-bottom-color:var(--ink);}
+  .pp-head{display:flex; gap:14px; align-items:center; padding:18px 18px 12px;}
+  .pp-photo{width:76px; height:76px; border-radius:14px; background:#1B1B1B; border:1px solid #2A2A2A; overflow:hidden; display:grid; place-items:center; font-family:'Anton',sans-serif; font-size:26px; color:#666; flex:0 0 auto;}
+  .pp-photo img{width:100%; height:100%; object-fit:cover;}
+  .pp-name{font-family:'Anton',sans-serif; font-size:26px; line-height:1;}
+  .pp-sub{color:var(--mute); font-size:12.5px; margin-top:4px;}
+  .pp-kv{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; padding:0 18px 12px;}
+  .pp-kv div{background:#141414; border:1px solid #2A2A2A; border-radius:10px; padding:9px 10px;}
+  .pp-kv .k{font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:#777; font-weight:700;}
+  .pp-kv .v{font-size:14px; font-weight:700; margin-top:2px;}
+  .pp-sec{padding:0 18px 14px;}
+  .pp-sec h4{margin:12px 0 6px; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#777;}
+  .pp-row{display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid #1E1E1E; font-size:13px; cursor:pointer;}
+  .pp-row:hover{color:#fff;}
 </style>
 </head>
 <body>
@@ -2185,7 +2201,7 @@ function openMarketDetail(entry){
         ${headshotUrl ? `<img class="xgm-face" src="${esc(headshotUrl)}" alt="" onerror="this.style.display='none'">` : ''}
         <div>
           <div class="xgm-sym">${esc(sym)} <span>${esc(pos||'')}${cls?' &middot; \'' + String(cls).slice(2):''}</span></div>
-          <div class="xgm-name">${esc(name)}</div>
+          <div class="xgm-name"><span class="plink" data-pname="${esc(name)}" data-pschool="${esc((school||'').replace(' (JUCO)',''))}" title="Open full profile">${esc(name)}</span></div>
           <div class="xgm-school">${logoUrl?`<img class="mk-logo" src="${esc(logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(school||'')}</div>
         </div>
       </div>
@@ -2707,7 +2723,7 @@ function renderMarketView(){
         return `<div class="xg-row ${x.dir}" data-mi="${ri}">
           <div class="xg-sym" style="flex-direction:row;align-items:center;gap:9px;">
             ${x.headshotUrl ? `<img class="mk-face" src="${esc(x.headshotUrl)}" alt="" onerror="this.style.visibility='hidden'">` : ''}
-            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(x.name)} &middot; ${esc(x.school||'')}</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}<span class="plink" data-pname="${esc(x.name)}" data-pschool="${esc((x.school||'').replace(' (JUCO)',''))}">${esc(x.name)}</span> &middot; ${esc(x.school||'')}</span></div>
           </div>
           <div class="xg-pos">${esc(x.pos||'')}</div>
           <div class="xg-price">${x.price.toFixed(1)}</div>
@@ -2805,7 +2821,7 @@ function renderRequestedView(){
             + '>'
             + photo
             + '<div class="bcard-body">'
-            +   '<div class="bcard-name">' + esc(x.prospect) + '</div>'
+            +   '<div class="bcard-name"><span class="plink" data-pid="' + (x.prospectId||'') + '" data-pname="' + esc(x.prospect) + '" data-pschool="' + esc(x.school||'') + '">' + esc(x.prospect) + '</span></div>'
             +   '<div class="bcard-meta">' + (x.logoUrl ? '<img class="mk-logo" src="' + esc(x.logoUrl) + '" alt="" onerror="this.remove()">' : '') + esc(x.school||'') + '</div>'
             +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
             +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
@@ -3087,6 +3103,7 @@ function popupHTML(r,i,s){
     if(i < 0 || !s){
       return `<div style="font-family:sans-serif;width:185px">${face}
         <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:2px">${esc(r.prospect)}</div>
+        ${pin.id ? `<div style="font-size:11px;margin:-2px 0 6px;"><a href="#" onclick="openPlayer(${pin.id}); return false;" style="color:#FF0000;">Open profile</a></div>` : ''}
         <div style="font-size:11px;color:#555">${esc(r.position||'')}${r.classYear?' · Class of '+esc(r.classYear):''}</div>
         <div style="font-size:11px;color:#555;margin-bottom:6px">${esc(r.school||'')}${pin.level?' · '+esc(pin.level):''}</div>
         <div style="font-size:10px;color:#888">${pin.status==='board' ? 'On your prospect board · not yet scouted' : pin.status==='tracked' ? 'Tracked on the Production Market' : 'Prospect · not yet scouted'}${pin.exact ? '' : ' · placed at the school'}</div>
@@ -3661,7 +3678,7 @@ function _openReportInner(i){
   if(!cfg){
     document.getElementById('modal').innerHTML =
       `<div class="m-head"><button class="m-close" onclick="closeModal()" aria-label="Close">&times;</button>
-       <div class="m-name">${esc(r.prospect)}</div>
+       <div class="m-name"><span class="plink" data-pid="${r.prospectId||''}" data-pname="${esc(r.prospect)}" data-pschool="${esc(r.school||'')}" title="Open full profile">${esc(r.prospect)}</span></div>
        <div class="m-sub">Position "${esc(r.position)}" is not in the report template.</div></div>
        <div class="m-body"><div class="sec"><div class="narrative">This report was filed under a position code the portal does not recognize. Check the position field on the scouting report.</div></div></div>`;
     document.getElementById('overlay').classList.add('open');
@@ -3806,6 +3823,60 @@ function barRow(lbl, val, wt){
     <span class="bar-track"><span class="bar-fill" data-w="${Math.min(val,100)}%" style="width:0"></span></span>
     <span class="bar-val">${Math.round(val)}</span></div>`;
 }
+/* ---------------- PLAYER PROFILE (coach view) ---------------- */
+const PLAYER_URL = LIVE_URL.replace(/\/list-reports$/, '/player');
+async function openPlayer(idOrName, school){
+  const ov = document.getElementById('overlay'), mod = document.getElementById('modal');
+  if(!ov || !mod) return;
+  document.body.classList.add('modal-open'); ov.classList.add('on'); mod.scrollTop = 0;
+  mod.innerHTML = '<div class="m-body"><div class="empty">Loading player...</div></div>';
+  try{
+    const q = (typeof idOrName === 'number' || /^\d+$/.test(String(idOrName))) ? 'id=' + idOrName : 'name=' + encodeURIComponent(idOrName) + '&school=' + encodeURIComponent(school||'');
+    const res = await fetch(PLAYER_URL + '?' + q, { cache:'no-store' });
+    const p = await res.json();
+    if(!res.ok) throw new Error(p.error || 'Not found');
+    renderPlayer(p);
+  }catch(err){ mod.innerHTML = `<div class="m-head"><div><div class="m-name">Player</div></div><button class="m-close" onclick="closeModal()">&times;</button></div><div class="m-body"><div class="empty">${esc(err.message)}</div></div>`; }
+}
+function vchkP(p, f){ const v = (p.verifications||{})[f]; return v ? `<span class="vchk" title="Verified${v.source?' &middot; '+esc(v.source):''}${v.at?' &middot; '+esc(v.at):''}">&#10003;</span>` : ''; }
+function renderPlayer(p){
+  const mod = document.getElementById('modal');
+  const byId = {}; REPORTS.forEach((r,i)=>{ byId[String(r.id)] = i; });
+  const best = p.reports.length ? p.reports.reduce((a,b)=>(b.score||0)>(a.score||0)?b:a) : null;
+  const graded = p.games.filter(g=>g.grade!=null);
+  const kv = [
+    ['Position', p.positionLabel || p.position], ['Class', p.classYear ? 'Class of ' + p.classYear : null], ['Level', p.level],
+    ['Height', p.height ? esc(p.height) + vchkP(p,'height') : null], ['Weight', p.weight ? esc(p.weight) + vchkP(p,'weight') : null],
+    ['Wingspan', p.wingspan ? esc(p.wingspan) + vchkP(p,'wingspan') : null],
+    ['Track', (p.verifications||{}).track ? esc(p.verifications.track.value||'verified') + vchkP(p,'track') : null],
+    ['40', (p.verifications||{}).forty ? esc(p.verifications.forty.value||'verified') + vchkP(p,'forty') : null],
+    ['GPA', (p.verifications||{}).gpa ? esc(p.verifications.gpa.value||'verified') + vchkP(p,'gpa') : null],
+    ['Hometown', [p.homeCity, p.homeState].filter(Boolean).join(', ') || null]
+  ].filter(x=>x[1]);
+  mod.innerHTML = `
+    <div class="m-head" style="padding:0;"><div style="flex:1;"></div><button class="m-close" onclick="closeModal()" style="margin:10px 12px 0 0;">&times;</button></div>
+    <div class="pp-head">
+      <div class="pp-photo">${p.headshotUrl ? `<img src="${esc(p.headshotUrl)}" alt="" onerror="this.parentElement.textContent='${esc((p.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2))}'">` : esc((p.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2))}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="pp-name">${esc(p.name)}</div>
+        <div class="pp-sub">${p.logoUrl?`<img class="mk-logo" src="${esc(p.logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(p.school||'')}${p.boards&&p.boards.length?` &middot; on your board`:''}</div>
+        ${best ? `<div style="margin-top:6px;"><span style="font-family:'Anton',sans-serif;font-size:22px;color:var(--accent);">${best.score!=null?best.score.toFixed(1):'\u2014'}</span> <span class="pp-sub" style="display:inline;">InHome Score &middot; ${esc(best.tier||'')}</span></div>` : '<div class="pp-sub" style="margin-top:6px;">Not yet scouted</div>'}
+      </div>
+    </div>
+    <div class="pp-kv">${kv.map(([k,v])=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
+    ${p.reports.length ? `<div class="pp-sec"><h4>Scouting reports (${p.reports.length})</h4>${p.reports.map(r=>{ const idx = byId[String(r.id)];
+      return `<div class="pp-row" ${idx!==undefined?`onclick="openReport(${idx})"`:''}><div style="flex:1;"><b>${esc(r.scoutName||'Scout')}</b>${r.scoutRole?` <span style="color:var(--mute)">&middot; ${esc(r.scoutRole)}</span>`:''}<br><span style="color:var(--mute);font-size:11.5px;">${esc(r.date||'')}${r.archetype?' &middot; '+esc(r.archetype):''}</span></div><div style="text-align:right;"><div style="font-family:'Anton',sans-serif;font-size:18px;">${r.score!=null?r.score.toFixed(1):'\u2014'}</div><div style="font-size:10px;color:var(--mute);">${esc(r.tier||'')}</div></div></div>`; }).join('')}</div>` : ''}
+    ${p.assessments.length ? `<div class="pp-sec"><h4>Assessments</h4>${p.assessments.map(a=>`<div style="padding:8px 0;border-top:1px solid #1E1E1E;font-size:13px;"><b>${a.kind==='iq'?'Football IQ':a.kind==='full'?'Full assessment':'Interview'}</b>${a.pct!=null?` &middot; ${a.pct}%`:''}${a.mbti?` &middot; ${esc(a.mbti)}`:''} <span style="color:var(--mute);font-size:11.5px;">${esc(a.completed||'')}</span>${a.diagnosis?`<div style="color:#C4C8D0;margin-top:4px;line-height:1.5;">${esc(a.diagnosis.summary)}</div>`:''}</div>`).join('')}</div>` : ''}
+    ${graded.length ? `<div class="pp-sec"><h4>Production (${graded.length} graded game${graded.length===1?'':'s'})</h4>${graded.slice(0,8).map(g=>`<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #1E1E1E;font-size:12.5px;"><span style="min-width:58px;color:var(--mute)">${esc(g.date||'')}</span><span style="min-width:38px;font-family:'Anton',sans-serif;font-size:15px;">${g.grade.toFixed(1)}</span><span style="flex:1;color:#C4C8D0;">${esc(g.statLine||'')}</span></div>`).join('')}</div>` : ''}
+    ${p.filmLink ? `<div class="pp-sec"><a class="film-btn" href="${esc(p.filmLink)}" target="_blank" rel="noopener">Watch film</a></div>` : ''}
+    <div class="pp-sec" style="color:#666;font-size:11px;">Blue check = InHome confirmed it at the source.</div>`;
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest && e.target.closest('.plink');
+  if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  openPlayer(el.dataset.pid || el.dataset.pname, el.dataset.pschool || '');
+});
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
   document.body.style.overflow='';
