@@ -700,10 +700,15 @@
   .pp-row{display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid #1E1E1E; font-size:13px; cursor:pointer;}
   .pp-row:hover{color:#fff;}
 
-  .rail{display:flex; flex-wrap:wrap; gap:5px; align-items:center;}
-  .rail-lbl{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#777; font-weight:800; margin-right:2px;}
-  .rail a{font-size:10.5px; font-weight:700; color:#9AA0AA; border:1px solid #2A2A2A; border-radius:7px; padding:4px 7px; text-decoration:none;}
-  .rail a:hover{border-color:#EDEDED; color:#EDEDED;}
+
+  /* Recruiting lookups as logo buttons */
+  .rail{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
+  .rail-lbl{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#777; font-weight:800; width:100%; margin-bottom:1px;}
+  .rlink{display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:44px; height:34px; padding:0 10px;
+         border:1px solid #2A2A2A; border-radius:9px; background:#141414; text-decoration:none; transition:border-color .12s, background .12s;}
+  .rlink:hover{border-color:#EDEDED; background:#1B1B1B;}
+  .rlink img{height:15px; width:auto; max-width:62px; object-fit:contain; display:block;}
+  .rlink span{font-size:11px; font-weight:800; letter-spacing:.02em; color:#EDEDED;}
 </style>
 </head>
 <body>
@@ -3843,20 +3848,31 @@ async function openPlayer(idOrName, school){
     renderPlayer(p);
   }catch(err){ mod.innerHTML = `<div class="m-head"><div><div class="m-name">Player</div></div><button class="m-close" onclick="closeModal()">&times;</button></div><div class="m-body"><div class="empty">${esc(err.message)}</div></div>`; }
 }
-/* Outside lookups: profile-path searches per site, plus X site-wide. */
+/* Outside lookups. Each opens a profile-path search on that site, except
+   X and MileSplit which are site-wide searches (recruits are found by
+   posts and meet results, not by a guessable profile URL). Logos are
+   loaded from each site's own favicon service; if one fails to load the
+   button falls back to its name, so a blocked image never leaves a hole. */
 const profileSearch = (path, n) => 'https://www.google.com/search?q=' + encodeURIComponent(`site:${path} "${n}"`);
-function recruitRail(name){
+const RECRUIT_SITES = [
+  { id:'247',       name:'247Sports', domain:'247sports.com', url:n => profileSearch('247sports.com/player/', n) },
+  { id:'on3',       name:'On3',       domain:'on3.com',       url:n => profileSearch('on3.com/db/', n) },
+  { id:'rivals',    name:'Rivals',    domain:'rivals.com',    url:n => profileSearch('on3.com/rivals/', n) },
+  { id:'maxpreps',  name:'MaxPreps',  domain:'maxpreps.com',  url:n => profileSearch('maxpreps.com', n) + encodeURIComponent(' athletes') },
+  { id:'milesplit', name:'MileSplit', domain:'milesplit.com', url:n => 'https://www.milesplit.com/search?q=' + encodeURIComponent(n) },
+  { id:'hudl',      name:'Hudl',      domain:'hudl.com',      url:n => profileSearch('hudl.com/profile/', n) },
+  { id:'x',         name:'X',         domain:'x.com',         url:n => 'https://x.com/search?f=live&q=' + encodeURIComponent(`"${n}"`) }
+];
+function siteIcon(d){ return 'https://www.google.com/s2/favicons?sz=64&domain=' + d; }
+function railHTML(name){
   if(!name) return '';
-  const sites = [
-    ['247', profileSearch('247sports.com/player/', name)],
-    ['On3', profileSearch('on3.com/db/', name)],
-    ['Rivals', profileSearch('on3.com/rivals/', name)],
-    ['MaxPreps', profileSearch('maxpreps.com', name) + encodeURIComponent(' athletes')],
-    ['Hudl', profileSearch('hudl.com/profile/', name)],
-    ['X', 'https://x.com/search?f=live&q=' + encodeURIComponent(`"${name}"`)]
-  ];
-  return '<span class="rail-lbl">Look up</span>' + sites.map(s => `<a href="${s[1]}" target="_blank" rel="noopener">${s[0]}</a>`).join('');
+  return '<div class="rail" onclick="event.stopPropagation()"><span class="rail-lbl">Look him up</span>' +
+    RECRUIT_SITES.map(s =>
+      '<a class="rlink" href="' + s.url(name) + '" target="_blank" rel="noopener" title="' + s.name + '">' +
+      '<img src="' + siteIcon(s.domain) + '" alt="" onerror="this.remove(); this.parentElement.innerHTML=\'<span>' + s.name + '</span>\';">' +
+      '<span style="font-size:10.5px;color:#9AA0AA;">' + s.name + '</span></a>').join('') + '</div>';
 }
+function recruitRail(name){ return railHTML(name); }
 function vchkP(p, f){ const v = (p.verifications||{})[f]; return v ? `<span class="vchk" title="Verified${v.source?' &middot; '+esc(v.source):''}${v.at?' &middot; '+esc(v.at):''}">&#10003;</span>` : ''; }
 function renderPlayer(p){
   const mod = document.getElementById('modal');
@@ -3883,7 +3899,7 @@ function renderPlayer(p){
       </div>
     </div>
     <div class="pp-kv">${kv.map(([k,v])=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
-    <div class="pp-sec" style="padding-top:0;"><div class="rail">${recruitRail(p.name)}</div></div>
+    <div class="pp-sec" style="padding-top:0;">${railHTML(p.name)}</div>
     ${p.reports.length ? `<div class="pp-sec"><h4>Scouting reports (${p.reports.length})</h4>${p.reports.map(r=>{ const idx = byId[String(r.id)];
       return `<div class="pp-row" ${idx!==undefined?`onclick="openReport(${idx})"`:''}><div style="flex:1;"><b>${esc(r.scoutName||'Scout')}</b>${r.scoutRole?` <span style="color:var(--mute)">&middot; ${esc(r.scoutRole)}</span>`:''}<br><span style="color:var(--mute);font-size:11.5px;">${esc(r.date||'')}${r.archetype?' &middot; '+esc(r.archetype):''}</span></div><div style="text-align:right;"><div style="font-family:'Anton',sans-serif;font-size:18px;">${r.score!=null?r.score.toFixed(1):'\u2014'}</div><div style="font-size:10px;color:var(--mute);">${esc(r.tier||'')}</div></div></div>`; }).join('')}</div>` : ''}
     ${(p.offers&&p.offers.length)||p.commitment ? `<div class="pp-sec"><h4>Recruitment</h4>${p.commitment?`<div style="font-size:13px;margin-bottom:6px;"><b>${esc(p.commitment.status)}</b>${p.commitment.to?' to '+esc(p.commitment.to):''}</div>`:''}${(p.offers||[]).length?`<div style="font-size:13px;color:#C4C8D0;">Offers: ${p.offers.map(o=>esc(o.school)).join(', ')}</div>`:''}</div>` : ''}
