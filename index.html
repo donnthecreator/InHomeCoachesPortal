@@ -710,11 +710,6 @@
   .rlink img{height:15px; width:auto; max-width:62px; object-fit:contain; display:block;}
   .rlink span{font-size:11px; font-weight:800; letter-spacing:.02em; color:#EDEDED;}
 
-  .bcard .rail{gap:5px; margin-top:6px;}
-  .bcard .rail-lbl{display:none;}
-  .bcard .rlink{height:26px; min-width:32px; padding:0 6px; border-radius:7px;}
-  .bcard .rlink img{height:12px;}
-  .bcard .rlink span{display:none;}
 </style>
 </head>
 <body>
@@ -2825,15 +2820,18 @@ function renderRequestedView(){
       + '<div class="bcol-head">' + esc(pos) + '<span class="bcol-n">' + done + '/' + list.length + '</span></div>'
       + list.map(function(x){
           const idx = reportIndexFor(x.reportId);
-          const clickable = x.status==='scouted' && idx >= 0;
+          const hasReport = x.status==='scouted' && idx >= 0;
           const photo = x.headshotUrl ? '<img class="bcard-photo" src="' + esc(x.headshotUrl) + '" alt="" onerror="this.style.display=\'none\'">' : '';
           const meta2 = [x.classYear ? 'Class of ' + esc(x.classYear) : '', x.homeState ? esc(x.homeState) : ''].filter(Boolean).join(' · ');
           const right = x.status==='scouted'
             ? '<div class="bcard-score">' + (x.inhomeScore!=null ? Number(x.inhomeScore).toFixed(1) : '—') + '</div>'
               + '<div class="req-status done">' + esc(x.recommendationTier || 'Report ready') + '</div>'
             : '<div class="req-status">Not yet scouted</div>';
-          return '<div class="bcard req' + (clickable ? '' : ' req-pending') + '"'
-            + (clickable ? ' data-i="' + idx + '" tabindex="0" role="button" onclick="openReport(' + idx + ')"' : '')
+          /* The whole card opens his profile, scouted or not. The full
+             report is a button inside the profile when one exists. */
+          return '<div class="bcard req' + (hasReport ? '' : ' req-pending') + '"'
+            + ' tabindex="0" role="button"'
+            + ' onclick="openPlayer(' + (x.prospectId ? x.prospectId : "'" + String(x.prospect||'').replace(/'/g,"\\'") + "', '" + String(x.school||'').replace(/'/g,"\\'") + "'") + ')"'
             + '>'
             + photo
             + '<div class="bcard-body">'
@@ -2841,7 +2839,6 @@ function renderRequestedView(){
             +   '<div class="bcard-meta">' + (x.logoUrl ? '<img class="mk-logo" src="' + esc(x.logoUrl) + '" alt="" onerror="this.remove()">' : '') + esc(x.school||'') + '</div>'
             +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
             +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
-            +   railHTML(x.prospect)
             + '</div>'
             + '<div class="bcard-right">' + right + '</div>'
             + '</div>';
@@ -3906,6 +3903,8 @@ function renderPlayer(p){
       </div>
     </div>
     <div class="pp-kv">${kv.map(([k,v])=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
+    ${(() => { const r0 = (p.reports||[])[0]; const i0 = r0 ? byId[String(r0.id)] : undefined;
+      return i0 !== undefined ? `<div class="pp-sec" style="padding-bottom:8px;"><button class="film-btn" style="width:100%;" onclick="openReport(${i0})">Open full scouting report</button></div>` : ''; })()}
     <div class="pp-sec" style="padding-top:0;">${railHTML(p.name)}</div>
     ${p.reports.length ? `<div class="pp-sec"><h4>Scouting reports (${p.reports.length})</h4>${p.reports.map(r=>{ const idx = byId[String(r.id)];
       return `<div class="pp-row" ${idx!==undefined?`onclick="openReport(${idx})"`:''}><div style="flex:1;"><b>${esc(r.scoutName||'Scout')}</b>${r.scoutRole?` <span style="color:var(--mute)">&middot; ${esc(r.scoutRole)}</span>`:''}<br><span style="color:var(--mute);font-size:11.5px;">${esc(r.date||'')}${r.archetype?' &middot; '+esc(r.archetype):''}</span></div><div style="text-align:right;"><div style="font-family:'Anton',sans-serif;font-size:18px;">${r.score!=null?r.score.toFixed(1):'\u2014'}</div><div style="font-size:10px;color:var(--mute);">${esc(r.tier||'')}</div></div></div>`; }).join('')}</div>` : ''}
