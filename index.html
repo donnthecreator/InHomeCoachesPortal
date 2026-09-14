@@ -687,28 +687,28 @@
   .plink{cursor:pointer; border-bottom:1px dotted transparent;}
   .plink:hover{border-bottom-color:var(--ink);}
   .pp-head{display:flex; gap:14px; align-items:center; padding:18px 18px 12px;}
-  .pp-photo{width:76px; height:76px; border-radius:14px; background:#1B1B1B; border:1px solid #2A2A2A; overflow:hidden; display:grid; place-items:center; font-family:'Anton',sans-serif; font-size:26px; color:#666; flex:0 0 auto;}
+  .pp-photo{width:76px; height:76px; border-radius:14px; background:var(--card); border:1px solid var(--line); overflow:hidden; display:grid; place-items:center; font-family:'Anton',sans-serif; font-size:26px; color:var(--mute); flex:0 0 auto;}
   .pp-photo img{width:100%; height:100%; object-fit:cover;}
   .pp-name{font-family:'Anton',sans-serif; font-size:26px; line-height:1;}
   .pp-sub{color:var(--mute); font-size:12.5px; margin-top:4px;}
   .pp-kv{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; padding:0 18px 12px;}
-  .pp-kv div{background:#141414; border:1px solid #2A2A2A; border-radius:10px; padding:9px 10px;}
-  .pp-kv .k{font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:#777; font-weight:700;}
+  .pp-kv div{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:9px 10px;}
+  .pp-kv .k{font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); font-weight:700;}
   .pp-kv .v{font-size:14px; font-weight:700; margin-top:2px;}
   .pp-sec{padding:0 18px 14px;}
-  .pp-sec h4{margin:12px 0 6px; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#777;}
-  .pp-row{display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid #1E1E1E; font-size:13px; cursor:pointer;}
-  .pp-row:hover{color:#fff;}
+  .pp-sec h4{margin:12px 0 6px; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute);}
+  .pp-row{display:flex; gap:10px; align-items:center; padding:9px 0; border-top:1px solid var(--line); font-size:13px; cursor:pointer;}
+  .pp-row:hover{color:var(--ink);}
 
 
   /* Recruiting lookups as logo buttons */
   .rail{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px;}
-  .rail-lbl{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:#777; font-weight:800; width:100%; margin-bottom:1px;}
+  .rail-lbl{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); font-weight:800; width:100%; margin-bottom:1px;}
   .rlink{display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:44px; height:34px; padding:0 10px;
-         border:1px solid #2A2A2A; border-radius:9px; background:#141414; text-decoration:none; transition:border-color .12s, background .12s;}
-  .rlink:hover{border-color:#EDEDED; background:#1B1B1B;}
+         border:1px solid var(--line); border-radius:9px; background:var(--card); text-decoration:none; transition:border-color .12s, background .12s;}
+  .rlink:hover{border-color:var(--ink);}
   .rlink img{height:15px; width:auto; max-width:62px; object-fit:contain; display:block;}
-  .rlink span{font-size:11px; font-weight:800; letter-spacing:.02em; color:#EDEDED;}
+  .rlink span{font-size:11px; font-weight:800; letter-spacing:.02em; color:var(--ink);}
 
 </style>
 </head>
@@ -750,7 +750,7 @@
       <!-- Build stamp. If this is not visible on the live site, the deploy
            did not take and you are looking at an older file. -->
       <div class="gate-line">The&nbsp;<svg class="inline-i" viewBox="0 0 22 73" role="img" aria-label="I"><path fill-rule="evenodd" fill="currentColor" d="M11 1.2 C11.5 1.2 12 1.4 12.4 1.8 L20.8 9.4 C21.6 10.1 21.7 11.3 21 12.1 C20.3 12.9 19.1 13 18.3 12.3 L11 5.7 L3.7 12.3 C2.9 13 1.7 12.9 1 12.1 C0.3 11.3 0.4 10.1 1.2 9.4 L9.6 1.8 C10 1.4 10.5 1.2 11 1.2 Z M4.2 22.5 C4.2 21.1 5.3 20 6.7 20 H15.3 C16.7 20 17.8 21.1 17.8 22.5 V70.5 C17.8 71.9 16.7 73 15.3 73 H6.7 C5.3 73 4.2 71.9 4.2 70.5 Z M5.2 44 C6.9 40.8 15.1 40.8 16.8 44 C15.1 47.2 6.9 47.2 5.2 44 Z"/></svg>&nbsp;in the sky doesn't lie.</div>
-      <div class="gate-build" id="buildStamp">Build 2026.09.14-D &middot; prospect profile opens</div>
+      <div class="gate-build" id="buildStamp">Build 2026.09.14-E &middot; profile verified in Chrome</div>
     </div>
   </div>
 </div>
@@ -3915,8 +3915,8 @@ function railHTML(name){
   return '<div class="rail" onclick="event.stopPropagation()"><span class="rail-lbl">Look him up</span>' +
     RECRUIT_SITES.map(s =>
       '<a class="rlink" href="' + s.url(name) + '" target="_blank" rel="noopener" title="' + s.name + '">' +
-      '<img src="' + siteIcon(s.domain) + '" alt="" onerror="this.remove(); this.parentElement.innerHTML=\'<span>' + s.name + '</span>\';">' +
-      '<span style="font-size:10.5px;color:#9AA0AA;">' + s.name + '</span></a>').join('') + '</div>';
+      '<img src="' + siteIcon(s.domain) + '" alt="" onerror="this.style.display=\'none\'">' +
+      '<span style="font-size:10.5px;color:var(--mute);">' + s.name + '</span></a>').join('') + '</div>';
 }
 function recruitRail(name){ return railHTML(name); }
 function vchkP(p, f){ const v = (p.verifications||{})[f]; return v ? `<span class="vchk" title="Verified${v.source?' &middot; '+esc(v.source):''}${v.at?' &middot; '+esc(v.at):''}">&#10003;</span>` : ''; }
