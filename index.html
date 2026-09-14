@@ -364,7 +364,7 @@
   .side-note{font-size:10.5px; color:var(--mute); line-height:1.5; margin-top:9px;}
   .side .rec-filter{display:block; width:100%; text-align:left; margin-bottom:7px;}
   .side #classSelectWrap select{width:100%;}
-  .board-head{margin-top:16px;}
+  .board-head{margin-top:16px; scroll-margin-top:12px;}
 
   .req-card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px;
     max-width:460px; width:100%; margin:auto; position:relative;}
@@ -3526,11 +3526,42 @@ function renderSidePanel(){
   /* Hide the prospect-board nav entries an NFL scout has no use for. */
   document.querySelectorAll('.side-nav[data-view="requested"], .vtab[data-view="requested"]').forEach(function(b){ b.style.display = isNFL() ? 'none' : ''; });
 }
+/* Switching views swaps the contents of #viewHost but leaves the page
+   scrolled where it was, so the new view can render off screen: below the
+   stacked side panel on a narrow window, or above you if the last view was
+   long and you were near its bottom. Bring the board head back into view,
+   and only when it is actually out of position, so a click at the top of
+   the page does not jump the cover away. */
+function focusBoard(){
+  var head = document.querySelector('.board-head');
+  if(!head || !head.getBoundingClientRect) return;
+  /* Measure after layout settles: the outgoing view may have been much
+     taller, and a mid-flight page-height change clamps a manual scrollTo
+     to the wrong place. scrollIntoView is computed by the browser against
+     the final layout, so it lands correctly either way. */
+  var go = function(){
+    var top = head.getBoundingClientRect().top;
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    /* At the top of the page with the board already on screen, leave it be:
+       scrolling here would only push the school's cover out of view. */
+    if(y < 40 && top < window.innerHeight) return;
+    if(top >= 0 && top <= 140) return;   // already near the top of the viewport
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    try{ head.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); }
+    catch(err){ head.scrollIntoView(true); }
+  };
+  if(window.requestAnimationFrame) requestAnimationFrame(function(){ requestAnimationFrame(go); });
+  else setTimeout(go, 30);
+}
+
 document.addEventListener('click', function(e){
   var b = e.target.closest ? e.target.closest('.side-nav') : null;
   if(!b) return;
-  currentView = b.dataset.view;
-  renderCurrentView();
+  if(currentView !== b.dataset.view){
+    currentView = b.dataset.view;
+    renderCurrentView();
+  }
+  focusBoard();
 });
 
 function renderRecFilter(){
@@ -4091,7 +4122,10 @@ document.getElementById('darkToggle').addEventListener('click', ()=>{
 });
 /* Surface is decided by the signed-in program's colors in applySchoolTheme. */
 document.querySelectorAll('.vtab').forEach(t=>{
-  t.addEventListener('click', ()=>{ currentView = t.dataset.view; renderCurrentView(); });
+  t.addEventListener('click', ()=>{
+    if(currentView !== t.dataset.view){ currentView = t.dataset.view; renderCurrentView(); }
+    focusBoard();
+  });
 });
 document.getElementById('resetOrder').addEventListener('click', clearOrder);
 document.getElementById('refreshBtn').addEventListener('click', async (e)=>{
