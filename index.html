@@ -2831,7 +2831,7 @@ function renderRequestedView(){
              report is a button inside the profile when one exists. */
           return '<div class="bcard req' + (hasReport ? '' : ' req-pending') + '"'
             + ' tabindex="0" role="button"'
-            + ' onclick="openPlayer(' + (x.prospectId ? x.prospectId : "'" + String(x.prospect||'').replace(/'/g,"\\'") + "', '" + String(x.school||'').replace(/'/g,"\\'") + "'") + ')"'
+            + ' data-pp="' + REQUESTED.indexOf(x) + '"'
             + '>'
             + photo
             + '<div class="bcard-body">'
@@ -2846,6 +2846,19 @@ function renderRequestedView(){
       + '</div>';
   }).join('') + '</div>';
 }
+
+/* Prospect board cards: one delegated handler, so a re-render never
+   loses the binding and an inline quote in a name can never break it. */
+document.addEventListener('click', function(e){
+  const card = e.target.closest && e.target.closest('.bcard.req[data-pp]');
+  if(!card) return;
+  const x = (REQUESTED || [])[Number(card.dataset.pp)];
+  if(!x) return;
+  openPlayer(x.prospectId || x.prospect, x.school || '', {
+    name: x.prospect, school: x.school, position: x.position, classYear: x.classYear,
+    homeState: x.homeState, headshotUrl: x.headshotUrl, logoUrl: x.logoUrl
+  });
+});
 
 function renderBoardView(){
   const host = document.getElementById('viewHost');
@@ -3839,7 +3852,10 @@ function barRow(lbl, val, wt){
 }
 /* ---------------- PLAYER PROFILE (coach view) ---------------- */
 const PLAYER_URL = LIVE_URL.replace(/\/list-reports$/, '/player');
-async function openPlayer(idOrName, school){
+/* `basic` is whatever the board already knows about him. If the profile
+   service is unreachable we still show that plus the lookup buttons, so a
+   tap never dead-ends. */
+async function openPlayer(idOrName, school, basic){
   const ov = document.getElementById('overlay'), mod = document.getElementById('modal');
   if(!ov || !mod) return;
   document.body.classList.add('modal-open'); ov.classList.add('on'); mod.scrollTop = 0;
@@ -3847,10 +3863,21 @@ async function openPlayer(idOrName, school){
   try{
     const q = (typeof idOrName === 'number' || /^\d+$/.test(String(idOrName))) ? 'id=' + idOrName : 'name=' + encodeURIComponent(idOrName) + '&school=' + encodeURIComponent(school||'');
     const res = await fetch(PLAYER_URL + '?' + q, { cache:'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const p = await res.json();
-    if(!res.ok) throw new Error(p.error || 'Not found');
+    if(p && p.error) throw new Error(p.error);
     renderPlayer(p);
-  }catch(err){ mod.innerHTML = `<div class="m-head"><div><div class="m-name">Player</div></div><button class="m-close" onclick="closeModal()">&times;</button></div><div class="m-body"><div class="empty">${esc(err.message)}</div></div>`; }
+  }catch(err){
+    const b = basic || {};
+    renderPlayer({
+      id: /^\d+$/.test(String(idOrName)) ? Number(idOrName) : null,
+      name: b.name || (typeof idOrName === 'string' ? idOrName : ''), school: b.school || school || '',
+      position: b.position || null, classYear: b.classYear || null, level: b.level || null,
+      homeState: b.homeState || null, headshotUrl: b.headshotUrl || null, logoUrl: b.logoUrl || null,
+      verifications: {}, boards: [], offers: [], notes: [], reports: [], games: [], assessments: [],
+      _degraded: err.message
+    });
+  }
 }
 /* Outside lookups. Each opens a profile-path search on that site, except
    X and MileSplit which are site-wide searches (recruits are found by
@@ -3913,6 +3940,7 @@ function renderPlayer(p){
     ${p.assessments.length ? `<div class="pp-sec"><h4>Assessments</h4>${p.assessments.map(a=>`<div style="padding:8px 0;border-top:1px solid #1E1E1E;font-size:13px;"><b>${a.kind==='iq'?'Football IQ':a.kind==='full'?'Full assessment':'Interview'}</b>${a.pct!=null?` &middot; ${a.pct}%`:''}${a.mbti?` &middot; ${esc(a.mbti)}`:''} <span style="color:var(--mute);font-size:11.5px;">${esc(a.completed||'')}</span>${a.diagnosis?`<div style="color:#C4C8D0;margin-top:4px;line-height:1.5;">${esc(a.diagnosis.summary)}</div>`:''}</div>`).join('')}</div>` : ''}
     ${graded.length ? `<div class="pp-sec"><h4>Production (${graded.length} graded game${graded.length===1?'':'s'})</h4>${graded.slice(0,8).map(g=>`<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #1E1E1E;font-size:12.5px;"><span style="min-width:58px;color:var(--mute)">${esc(g.date||'')}</span><span style="min-width:38px;font-family:'Anton',sans-serif;font-size:15px;">${g.grade.toFixed(1)}</span><span style="flex:1;color:#C4C8D0;">${esc(g.statLine||'')}</span></div>`).join('')}</div>` : ''}
     ${p.filmLink ? `<div class="pp-sec"><a class="film-btn" href="${esc(p.filmLink)}" target="_blank" rel="noopener">Watch film</a></div>` : ''}
+    ${p._degraded ? `<div class="pp-sec"><div style="border:1px solid #4A3410;background:#1A1206;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#E0A419;">Full profile could not load right now (${esc(p._degraded)}). Showing what is on your board. The lookup links below still work.</div></div>` : ''}
     <div class="pp-sec" style="color:#666;font-size:11px;">Blue check = InHome confirmed it at the source.</div>`;
 }
 document.addEventListener('click', (e) => {
