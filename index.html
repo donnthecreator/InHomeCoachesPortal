@@ -822,10 +822,10 @@
       <div class="side-h">Requests</div>
       <button class="side-act" onclick="openRequest('film')">Request more film</button>
       <button class="side-act" onclick="openRequest('scout')">Talk to the scout</button>
-      <button class="side-act" onclick="openRequest('coach')">Reach the high school coach</button>
-      <button class="side-act" onclick="openRequest('interview')">Request player interview</button>
-      <button class="side-act" onclick="openRequest('prospect')">Request prospect contact</button>
-      <div class="side-note">Requests route through InHome. We handle contact and compliance, then come back to you.</div>
+      <button class="side-act coll-only" onclick="openRequest('coach')">Reach the high school coach</button>
+      <button class="side-act coll-only" onclick="openRequest('interview')">Request player interview</button>
+      <button class="side-act coll-only" onclick="openRequest('prospect')">Request prospect contact</button>
+      <div class="side-note" id="reqNote">Requests route through InHome. We handle contact and compliance, then come back to you.</div>
     </div>
 
     <button class="refresh hidden" id="refreshBtn">Refresh</button>
@@ -1286,6 +1286,15 @@ const PROGRAMS = {
   "USA26": { name:"South Alabama", school:"South Alabama", conf:"Sun Belt", st:"AL", p:"#00205B", x:"#BF0D3E", i:"6", tag:"InHome Recruiting Data" },
   "USM26": { name:"Southern Miss", school:"Southern Miss", conf:"Sun Belt", st:"MS", p:"#000000", x:"#FFAA3C", i:"2572", tag:"InHome Recruiting Data" },
   "TROY26": { name:"Troy", school:"Troy", conf:"Sun Belt", st:"AL", p:"#8A2432", x:"#000000", i:"2653", tag:"InHome Recruiting Data" },
+
+  /* ---------- NFL ----------
+     One code per scout. tier:'nfl' unlocks evaluations on enrolled college
+     players and swaps the compliance wording to the evaluation-service
+     version. Player contact on this side goes through the school's pro
+     liaison, never through InHome. */
+  "HARVEY26": { name:"Detroit Lions", school:"Detroit Lions", conf:"NFL", st:"MI", p:"#0076B6", x:"#B0B7BC",
+                logo:"https://a.espncdn.com/i/teamlogos/nfl/500/det.png", tag:"InHome Evaluation",
+                tier:"nfl", scout:"Joseph Harvey" },
 };
 
 /* ============================================================
@@ -1308,6 +1317,18 @@ let classFilter  = 'ALL';   // grad class filter, 'ALL' or a year string
 let recFilter    = false;   // true = only players a scout recommended to this program
 let PROGRAM_MATCH = '';     // normalized name of the signed-in program
 let PROGRAM_LABEL = '';     // display name of the signed-in program
+/* 'college' (default) or 'nfl'. NFL access is an evaluation service sold
+   to clubs: it sees evaluations on enrolled college players that programs
+   cannot, and the compliance wording changes to match. */
+let PROGRAM_TIER  = 'college';
+const isNFL = () => PROGRAM_TIER === 'nfl';
+/* A program entry may carry an explicit logo URL (NFL clubs) or an ESPN
+   college id (everything else). */
+function progLogoUrl(prog){
+  if(!prog) return '';
+  if(prog.logo) return prog.logo;
+  return prog.i ? 'https://a.espncdn.com/i/teamlogos/ncaa/500/' + prog.i + '.png' : '';
+}
 const LIVE_URL = "https://inhomepdfreports.netlify.app/.netlify/functions/list-reports";
 const LIVE_KEY = null;   // only if you set PORTAL_ACCESS_KEY in Netlify
 
@@ -1708,8 +1729,10 @@ async function openPortal(prog){
   applySchoolTheme(prog);
   var _tag = document.getElementById('coverTag');
   if(_tag) _tag.textContent = prog.tag;
-  const _mk = prog.i
-    ? `<img src="https://a.espncdn.com/i/teamlogos/ncaa/500/${prog.i}.png" alt=""
+  PROGRAM_TIER = prog.tier || 'college';
+  const _logo = progLogoUrl(prog);
+  const _mk = _logo
+    ? `<img src="${_logo}" alt=""
         style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:7px;padding:2px;vertical-align:-9px;margin-right:10px"
         onerror="this.outerHTML='<span style=\\'display:inline-block;width:8px;height:30px;border-radius:3px;background:linear-gradient(180deg,${prog.p||'#555'},${prog.x||'#222'});vertical-align:-7px;margin-right:10px\\'></span>'">`
     : '';
@@ -1726,6 +1749,8 @@ async function openPortal(prog){
   PROGRAM_CODE = '';
   for(var _c in PROGRAMS){ if(PROGRAMS[_c] === prog){ PROGRAM_CODE = _c; break; } }
   REQUESTED = null; REQUESTED_ERR = null;
+  /* An NFL scout has no prospect board with us; the market is the product. */
+  if(isNFL()) currentView = 'market';
   loadOrder();
   document.getElementById('boardCnt').textContent = LIVE_URL ? 'Loading...' : '';
   renderCurrentView();
@@ -2243,7 +2268,7 @@ function openMarketDetail(entry){
         ${headshotUrl ? `<img class="xgm-face" src="${esc(headshotUrl)}" alt="" onerror="this.style.display='none'">` : ''}
         <div>
           <div class="xgm-sym">${esc(sym)} <span>${esc(pos||'')}${cls?' &middot; \'' + String(cls).slice(2):''}</span></div>
-          <div class="xgm-name">${(isCollege && !portalDeclared)
+          <div class="xgm-name">${(isCollege && !portalDeclared && !isNFL())
             ? esc(name)
             : `<span class="plink" data-pname="${esc(name)}" data-pschool="${esc((school||'').replace(' (JUCO)',''))}" title="Open full profile">${esc(name)}</span>`}</div>
           <div class="xgm-school">${logoUrl?`<img class="mk-logo" src="${esc(logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(school||'')}</div>
@@ -2275,6 +2300,14 @@ function openMarketDetail(entry){
     <div class="xgm-log">${rows || '<div class="xgm-row"><span class="xgm-w">&mdash;</span><span class="xgm-v">No points yet</span><span class="xgm-d"></span></div>'}</div>
     ${socialHTML}
     ${(function(){
+      /* NFL access is the evaluation service. The report is the product,
+         enrolled or not; contact still routes to the school's pro liaison. */
+      if(isCollege && isNFL()){
+        return `<div class="xgm-lock" style="${reportIndex!=null?'margin-bottom:10px;':''}"><b>Enrolled student-athlete.</b> Evaluation only. Contact goes through the school's pro liaison.</div>`
+          + (reportIndex!=null
+              ? `<button class="xgm-open" id="xgmOpen">Open full evaluation</button>`
+              : `<div class="xgm-note">No InHome evaluation on file yet.</div>`);
+      }
       /* An enrolled student-athlete's evaluation is not shown to programs.
          Entering the portal is public record and is what unlocks it. */
       if(isCollege && !portalDeclared){
@@ -2580,6 +2613,10 @@ function marketLevelSelectHTML(){
 /* Shown whenever an enrolled-college level is in view. The wording is
    deliberate: production, not availability, and no claim about intent. */
 function collegeNoticeHTML(){
+  if(isNFL()) return `<div class="xg-coll-note">
+    <span class="xg-coll-dot"></span>
+    <div><b>Evaluation provided to NFL clubs.</b> InHome grades enrolled college players and does not represent them. Reports are evaluations, not endorsements, and include what a player does not do well. Contact with an enrolled student-athlete goes through his school's pro liaison under NFL and NCAA rules, not through InHome.</div>
+  </div>`;
   return `<div class="xg-coll-note">
     <span class="xg-coll-dot"></span>
     <div><b>Production tracking only.</b> Players listed here are enrolled student-athletes. This reflects on-field production, not availability, and is not an indication that any player intends to transfer. InHome does not facilitate contact with enrolled student-athletes. Scouting reports unlock only after a player has entered the NCAA Transfer Portal. Contact is governed by your compliance office.</div>
@@ -2790,7 +2827,7 @@ function renderMarketView(){
         return `<div class="xg-row ${x.dir}" data-mi="${ri}">
           <div class="xg-sym" style="flex-direction:row;align-items:center;gap:9px;">
             ${x.headshotUrl ? `<img class="mk-face" src="${esc(x.headshotUrl)}" alt="" onerror="this.style.visibility='hidden'">` : ''}
-            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}${(x.isCollege && !x.portalDeclared) ? esc(x.name) : `<span class="plink" data-pname="${esc(x.name)}" data-pschool="${esc((x.school||'').replace(' (JUCO)',''))}">${esc(x.name)}</span>`} &middot; ${esc(x.school||'')}</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}${(x.isCollege && !x.portalDeclared && !isNFL()) ? esc(x.name) : `<span class="plink" data-pname="${esc(x.name)}" data-pschool="${esc((x.school||'').replace(' (JUCO)',''))}">${esc(x.name)}</span>`} &middot; ${esc(x.school||'')}</span></div>
           </div>
           <div class="xg-pos">${esc(x.pos||'')}</div>
           <div class="xg-price">${x.price.toFixed(1)}</div>
@@ -3459,8 +3496,8 @@ function renderSidePanel(){
   for(var c in PROGRAMS){ if((PROGRAMS[c].school || PROGRAMS[c].name) === PROGRAM_LABEL){ prog = PROGRAMS[c]; break; } }
   document.getElementById('sideSub').textContent =
     prog ? ((prog.conf || '') + (prog.st ? ' \u00b7 ' + prog.st : '')) : '';
-  document.getElementById('sideMark').innerHTML = (prog && prog.i)
-    ? '<img src="https://a.espncdn.com/i/teamlogos/ncaa/500/' + prog.i + '.png" alt="" onerror="this.outerHTML=\'<span class=&quot;swatch&quot; style=&quot;background:' + ((prog&&prog.p)||'#555') + '&quot;></span>\'">'
+  document.getElementById('sideMark').innerHTML = progLogoUrl(prog)
+    ? '<img src="' + progLogoUrl(prog) + '" alt="" onerror="this.outerHTML=\'<span class=&quot;swatch&quot; style=&quot;background:' + ((prog&&prog.p)||'#555') + '&quot;></span>\'">'
     : '<span class="swatch" style="background:' + ((prog&&prog.p)||'#555') + '"></span>';
 
   var recN = recCount();
@@ -3472,10 +3509,22 @@ function renderSidePanel(){
     + '<div class="side-stat"><div class="v">' + new Set(REPORTS.map(function(r){return r.position;})).size + '</div><div class="k">Positions</div></div>';
 
   var chip = document.getElementById('ncaaChip');
-  if(chip) chip.innerHTML = ncaaChipHTML();
+  if(chip){
+    chip.innerHTML = isNFL() ? '' : ncaaChipHTML();
+    var calSec = chip.closest('.side-sec'); if(calSec) calSec.style.display = isNFL() ? 'none' : '';
+  }
   document.querySelectorAll('.side-nav').forEach(function(b){
     b.classList.toggle('on', b.dataset.view === currentView);
   });
+  /* Athlete-contact request types are college-side only. On the NFL side
+     the only things InHome brokers are film and its own scouts. */
+  document.querySelectorAll('.coll-only').forEach(function(b){ b.style.display = isNFL() ? 'none' : ''; });
+  var rn = document.getElementById('reqNote');
+  if(rn) rn.textContent = isNFL()
+    ? 'Film and scout requests route through InHome. Player contact goes through the school\'s pro liaison.'
+    : 'Requests route through InHome. We handle contact and compliance, then come back to you.';
+  /* Hide the prospect-board nav entries an NFL scout has no use for. */
+  document.querySelectorAll('.side-nav[data-view="requested"], .vtab[data-view="requested"]').forEach(function(b){ b.style.display = isNFL() ? 'none' : ''; });
 }
 document.addEventListener('click', function(e){
   var b = e.target.closest ? e.target.closest('.side-nav') : null;
