@@ -750,7 +750,7 @@
       <!-- Build stamp. If this is not visible on the live site, the deploy
            did not take and you are looking at an older file. -->
       <div class="gate-line">The&nbsp;<svg class="inline-i" viewBox="0 0 22 73" role="img" aria-label="I"><path fill-rule="evenodd" fill="currentColor" d="M11 1.2 C11.5 1.2 12 1.4 12.4 1.8 L20.8 9.4 C21.6 10.1 21.7 11.3 21 12.1 C20.3 12.9 19.1 13 18.3 12.3 L11 5.7 L3.7 12.3 C2.9 13 1.7 12.9 1 12.1 C0.3 11.3 0.4 10.1 1.2 9.4 L9.6 1.8 C10 1.4 10.5 1.2 11 1.2 Z M4.2 22.5 C4.2 21.1 5.3 20 6.7 20 H15.3 C16.7 20 17.8 21.1 17.8 22.5 V70.5 C17.8 71.9 16.7 73 15.3 73 H6.7 C5.3 73 4.2 71.9 4.2 70.5 Z M5.2 44 C6.9 40.8 15.1 40.8 16.8 44 C15.1 47.2 6.9 47.2 5.2 44 Z"/></svg>&nbsp;in the sky doesn't lie.</div>
-      <div class="gate-build" id="buildStamp">Build 2026.09.14-C &middot; tap any prospect card</div>
+      <div class="gate-build" id="buildStamp">Build 2026.09.14-D &middot; prospect profile opens</div>
     </div>
   </div>
 </div>
@@ -2859,7 +2859,7 @@ function openProspectCard(card){
 }
 document.addEventListener('keydown', function(e){
   const card = e.target.closest && e.target.closest('.bcard.req[data-pp]');
-  if(card && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); openProspectCard(card); }
+  if(card && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); card.click(); }
 });
 document.addEventListener('click', function(e){
   const card = e.target.closest && e.target.closest('.bcard.req[data-pp]');
@@ -3873,7 +3873,7 @@ const PLAYER_URL = LIVE_URL.replace(/\/list-reports$/, '/player');
 async function openPlayer(idOrName, school, basic){
   const ov = document.getElementById('overlay'), mod = document.getElementById('modal');
   if(!ov || !mod) return;
-  document.body.classList.add('modal-open'); ov.classList.add('on'); mod.scrollTop = 0;
+  document.body.classList.add('modal-open'); ov.classList.add('open'); mod.scrollTop = 0;
   mod.innerHTML = '<div class="m-body"><div class="empty">Loading player...</div></div>';
   try{
     const q = (typeof idOrName === 'number' || /^\d+$/.test(String(idOrName))) ? 'id=' + idOrName : 'name=' + encodeURIComponent(idOrName) + '&school=' + encodeURIComponent(school||'');
