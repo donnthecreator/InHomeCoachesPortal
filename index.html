@@ -709,6 +709,12 @@
   .rlink:hover{border-color:#EDEDED; background:#1B1B1B;}
   .rlink img{height:15px; width:auto; max-width:62px; object-fit:contain; display:block;}
   .rlink span{font-size:11px; font-weight:800; letter-spacing:.02em; color:#EDEDED;}
+
+  .bcard .rail{gap:5px; margin-top:6px;}
+  .bcard .rail-lbl{display:none;}
+  .bcard .rlink{height:26px; min-width:32px; padding:0 6px; border-radius:7px;}
+  .bcard .rlink img{height:12px;}
+  .bcard .rlink span{display:none;}
 </style>
 </head>
 <body>
@@ -2835,6 +2841,7 @@ function renderRequestedView(){
             +   '<div class="bcard-meta">' + (x.logoUrl ? '<img class="mk-logo" src="' + esc(x.logoUrl) + '" alt="" onerror="this.remove()">' : '') + esc(x.school||'') + '</div>'
             +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
             +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
+            +   railHTML(x.prospect)
             + '</div>'
             + '<div class="bcard-right">' + right + '</div>'
             + '</div>';
