@@ -530,6 +530,22 @@
       appearance:none; -webkit-appearance:none;
       background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M1 1l4 4 4-4" stroke="%237A8094" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>');
       background-repeat:no-repeat; background-position:right 10px center;}
+  .xg-levels{display:flex; gap:4px; flex-wrap:wrap; margin-bottom:11px;}
+  .xg-lvl{background:#0F1116; border:1px solid #212430; color:#7A8094; border-radius:8px;
+      padding:7px 14px; font-size:11.5px; font-weight:700; cursor:pointer; letter-spacing:.02em;}
+  .xg-lvl:hover{color:#EDEFF4; border-color:#2F3441;}
+  .xg-lvl.on{background:#EDEFF4; border-color:#EDEFF4; color:#07080B;}
+  .xg-lvl.coll{border-style:dashed;}
+  .xg-lvl.coll.on{background:#E0A419; border-color:#E0A419; color:#07080B; border-style:solid;}
+  .xg-coll-note{display:flex; gap:11px; align-items:flex-start; background:#1A1608;
+      border:1px solid #3A2E10; border-radius:11px; padding:12px 14px; margin-bottom:14px;
+      font-size:12px; line-height:1.55; color:#E0C88A;}
+  .xg-coll-note b{color:#F3DFA6;}
+  .xg-coll-dot{width:7px; height:7px; border-radius:999px; background:#E0A419; margin-top:5px;
+      flex-shrink:0; box-shadow:0 0 0 3px rgba(224,164,25,.18);}
+  .xgm-lock{background:#141109; border:1px solid #3A2E10; border-radius:10px; padding:13px 15px;
+      font-size:12px; line-height:1.6; color:#E0C88A;}
+  .xgm-lock b{color:#F3DFA6;}
   .xg-range{display:flex; gap:4px; margin-bottom:12px;}
   .xg-rbtn{background:#0F1116; border:1px solid #212430; color:#7A8094; border-radius:7px;
       padding:5px 11px; font-size:10.5px; font-weight:700; cursor:pointer;}
@@ -2009,7 +2025,22 @@ const MARKET_KEY = 'inhome_market_hist_v1';
 let marketFilter = 'all';
 let marketClassFilter = '';   // '' = all classes, else a year string like '2026'
 let marketPosFilter = '';     // '' = all positions, else a position code like 'CB'
-let marketLevelFilter = '';   // '' = all, 'JUCO' or 'HS'
+let marketLevelFilter = '';   // '' = all, else one of MARKET_LEVELS
+/* Enrolled college players. Production tracking only: they never appear on
+   a program's prospect board, carry no contact path, and their scouting
+   report stays locked until the player has entered the transfer portal. */
+const COLLEGE_LEVELS = ['FBS','FCS','D2'];
+const MARKET_LEVELS = [
+  {k:'',     label:'All'},
+  {k:'HS',   label:'High School'},
+  {k:'JUCO', label:'JUCO'},
+  {k:'FBS',  label:'FBS'},
+  {k:'FCS',  label:'FCS'},
+  {k:'D2',   label:'D2'}
+];
+const isCollegeLevel = (lv) => COLLEGE_LEVELS.includes(String(lv||''));
+/* True when the level filter is sitting on an enrolled-college view. */
+function collegeViewActive(){ return isCollegeLevel(marketLevelFilter); }
 let PERF = null;              // performance log from list-performances, loaded on demand
 let PERF_ERR = null;
 const PERF_URL = LIVE_URL.replace(/\/list-reports$/, '/list-performances');
@@ -2161,7 +2192,7 @@ function marketBigChart(series, w, h){
    band and the Market tab itself, so the chart's green and red always
    read correctly. */
 function openMarketDetail(entry){
-  const { sym, name, pos, cls, school, series, price, chg, pctv, dir, reportIndex, log, social, headshotUrl, logoUrl } = entry;
+  const { sym, name, pos, cls, school, series, price, chg, pctv, dir, reportIndex, log, social, headshotUrl, logoUrl, isCollege, portalDeclared } = entry;
   const col = dir==='up' ? '#00C87A' : dir==='down' ? '#FF4D4D' : '#7A8094';
   const modal = document.getElementById('modal');
   const overlay = document.getElementById('overlay');
@@ -2212,7 +2243,9 @@ function openMarketDetail(entry){
         ${headshotUrl ? `<img class="xgm-face" src="${esc(headshotUrl)}" alt="" onerror="this.style.display='none'">` : ''}
         <div>
           <div class="xgm-sym">${esc(sym)} <span>${esc(pos||'')}${cls?' &middot; \'' + String(cls).slice(2):''}</span></div>
-          <div class="xgm-name"><span class="plink" data-pname="${esc(name)}" data-pschool="${esc((school||'').replace(' (JUCO)',''))}" title="Open full profile">${esc(name)}</span></div>
+          <div class="xgm-name">${(isCollege && !portalDeclared)
+            ? esc(name)
+            : `<span class="plink" data-pname="${esc(name)}" data-pschool="${esc((school||'').replace(' (JUCO)',''))}" title="Open full profile">${esc(name)}</span>`}</div>
           <div class="xgm-school">${logoUrl?`<img class="mk-logo" src="${esc(logoUrl)}" alt="" onerror="this.remove()">`:''}${esc(school||'')}</div>
         </div>
       </div>
@@ -2241,9 +2274,22 @@ function openMarketDetail(entry){
     <div class="xgm-loghead">${log ? 'Weekly game log' : 'Weekly history'}</div>
     <div class="xgm-log">${rows || '<div class="xgm-row"><span class="xgm-w">&mdash;</span><span class="xgm-v">No points yet</span><span class="xgm-d"></span></div>'}</div>
     ${socialHTML}
-    ${reportIndex!=null
-      ? `<button class="xgm-open" id="xgmOpen">Open full scouting report</button>`
-      : `<div class="xgm-note">Sample data &middot; not tied to a scouting report</div>`}
+    ${(function(){
+      /* An enrolled student-athlete's evaluation is not shown to programs.
+         Entering the portal is public record and is what unlocks it. */
+      if(isCollege && !portalDeclared){
+        return `<div class="xgm-lock"><b>Enrolled student-athlete.</b> Production only. InHome does not release evaluations on enrolled players and does not facilitate contact. If he enters the NCAA Transfer Portal, the report becomes available here.</div>`;
+      }
+      if(isCollege && portalDeclared){
+        const banner = `<div class="xgm-lock" style="${reportIndex!=null?'margin-bottom:10px;':''}"><b>In the transfer portal.</b> Contact permissions are governed by NCAA rules and your compliance office.</div>`;
+        return banner + (reportIndex!=null
+          ? `<button class="xgm-open" id="xgmOpen">Open full scouting report</button>`
+          : `<div class="xgm-note">No InHome evaluation on file yet.</div>`);
+      }
+      return reportIndex!=null
+        ? `<button class="xgm-open" id="xgmOpen">Open full scouting report</button>`
+        : `<div class="xgm-note">Sample data &middot; not tied to a scouting report</div>`;
+    })()}
   </div>`;
 
   overlay.classList.add('open');
@@ -2469,6 +2515,7 @@ function marketLiveAllRows(){
       const ri = reportIdx[p.nameKey || nameKeyOf(p.name)];
       return {sym: marketSymbol(p.name), name:p.name, pos:p.position, cls:p.classYear,
               school: (p.school||'') + (p.level==='JUCO' ? ' (JUCO)' : ''), level:p.level||'HS',
+              isCollege: !!p.isCollege, portalDeclared: !!p.portalDeclared,
               headshotUrl: p.headshotUrl || null, logoUrl: p.logoUrl || null,
               series, price, chg, pctv, dir, reportIndex: ri===undefined ? null : ri, log};
     })
@@ -2525,11 +2572,18 @@ function marketPosSelectHTML(rows){
   </select>`;
 }
 function marketLevelSelectHTML(){
-  return `<select class="xg-sel" id="xgLevelSel">
-    <option value=""${marketLevelFilter?'':' selected'}>HS + JUCO</option>
-    <option value="JUCO"${marketLevelFilter==='JUCO'?' selected':''}>JUCO only</option>
-    <option value="HS"${marketLevelFilter==='HS'?' selected':''}>High school only</option>
-  </select>`;
+  return `<div class="xg-levels">${MARKET_LEVELS.map(l=>
+    `<button class="xg-lvl ${marketLevelFilter===l.k?'on':''}${isCollegeLevel(l.k)?' coll':''}" data-ml="${l.k}">${l.label}</button>`
+  ).join('')}</div>`;
+}
+
+/* Shown whenever an enrolled-college level is in view. The wording is
+   deliberate: production, not availability, and no claim about intent. */
+function collegeNoticeHTML(){
+  return `<div class="xg-coll-note">
+    <span class="xg-coll-dot"></span>
+    <div><b>Production tracking only.</b> Players listed here are enrolled student-athletes. This reflects on-field production, not availability, and is not an indication that any player intends to transfer. InHome does not facilitate contact with enrolled student-athletes. Scouting reports unlock only after a player has entered the NCAA Transfer Portal. Contact is governed by your compliance office.</div>
+  </div>`;
 }
 /* Top risers and fallers off the change between a player's last two
    graded games. A player with one game is not eligible to move. */
@@ -2584,8 +2638,8 @@ function wireMarketControls(host, onChange){
   if(clsSel) clsSel.addEventListener('change', ()=>{ marketClassFilter = clsSel.value; onChange(); });
   const posSel = host.querySelector('#xgPosSel');
   if(posSel) posSel.addEventListener('change', ()=>{ marketPosFilter = posSel.value; onChange(); });
-  const lvlSel = host.querySelector('#xgLevelSel');
-  if(lvlSel) lvlSel.addEventListener('change', ()=>{ marketLevelFilter = lvlSel.value; onChange(); });
+  host.querySelectorAll('[data-ml]').forEach(btn=>
+    btn.addEventListener('click', ()=>{ marketLevelFilter = btn.dataset.ml; onChange(); }));
 }
 
 function renderMarketDemo(){
@@ -2631,8 +2685,9 @@ function renderMarketDemo(){
     </div>
     ${marketRangeHTML()}
     ${marketMoversHTML(scoped)}
+    ${marketLevelSelectHTML()}
+    ${collegeViewActive() ? collegeNoticeHTML() : ''}
     <div class="xg-filters">
-      ${marketLevelSelectHTML()}
       <button class="xg-fbtn ${marketFilter==='all'?'on':''}" data-mf="all">All</button>
       <button class="xg-fbtn ${marketFilter==='up'?'on':''}" data-mf="up">Rising</button>
       <button class="xg-fbtn ${marketFilter==='down'?'on':''}" data-mf="down">Falling</button>
@@ -2717,8 +2772,9 @@ function renderMarketView(){
     </div>
     ${marketRangeHTML()}
     ${marketMoversHTML(scoped)}
+    ${marketLevelSelectHTML()}
+    ${collegeViewActive() ? collegeNoticeHTML() : ''}
     <div class="xg-filters">
-      ${marketLevelSelectHTML()}
       <button class="xg-fbtn ${marketFilter==='all'?'on':''}" data-mf="all">All</button>
       <button class="xg-fbtn ${marketFilter==='up'?'on':''}" data-mf="up">Rising</button>
       <button class="xg-fbtn ${marketFilter==='down'?'on':''}" data-mf="down">Falling</button>
@@ -2734,7 +2790,7 @@ function renderMarketView(){
         return `<div class="xg-row ${x.dir}" data-mi="${ri}">
           <div class="xg-sym" style="flex-direction:row;align-items:center;gap:9px;">
             ${x.headshotUrl ? `<img class="mk-face" src="${esc(x.headshotUrl)}" alt="" onerror="this.style.visibility='hidden'">` : ''}
-            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}<span class="plink" data-pname="${esc(x.name)}" data-pschool="${esc((x.school||'').replace(' (JUCO)',''))}">${esc(x.name)}</span> &middot; ${esc(x.school||'')}</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><b>${esc(x.sym)}</b><span>${x.logoUrl?`<img class="mk-logo" src="${esc(x.logoUrl)}" alt="" onerror="this.remove()">`:''}${(x.isCollege && !x.portalDeclared) ? esc(x.name) : `<span class="plink" data-pname="${esc(x.name)}" data-pschool="${esc((x.school||'').replace(' (JUCO)',''))}">${esc(x.name)}</span>`} &middot; ${esc(x.school||'')}</span></div>
           </div>
           <div class="xg-pos">${esc(x.pos||'')}</div>
           <div class="xg-price">${x.price.toFixed(1)}</div>
