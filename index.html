@@ -4021,7 +4021,7 @@ function _openReportInner(i){
       <div class="m-chips">
         <span class="chip">${esc(r.school)}</span>
         <span class="chip">${esc(r.height)} · ${esc(fmtWeight(r.weight))}</span>
-        <span class="chip">Scout: ${esc(r.scoutName)}</span>
+        <span class="chip">Scout: ${esc(r.scoutName)}${r.scoutPlayed?` &middot; <span style="color:#F5F5F5">${esc(r.scoutPlayed)}</span>`:''}</span>
         <span class="chip">${esc(r.dateEvaluated)}</span>
         ${r.evalCamp?`<span class="chip">Evaluated at ${esc(r.evalCamp)}</span>`:''}
       </div>
@@ -4054,7 +4054,7 @@ function _openReportInner(i){
         <div class="iq-track"><div class="iq-fill" style="width:${iqPct}%"></div></div></div></div>
       ${assessmentHTML(r)}
       ${consensusHTML(r)}
-      <div class="sec"><div class="sec-h"><span class="sec-num">6</span><h3>Scout Narrative</h3><span class="wt">${esc(r.scoutName||'')}</span></div>
+      <div class="sec"><div class="sec-h"><span class="sec-num">6</span><h3>Scout Narrative</h3><span class="wt">${esc(r.scoutName||'')}${r.scoutPlayed?' &middot; '+esc(r.scoutPlayed):''}</span></div>
         ${promptsHTML(r)}
         ${r.narrative ? `<div class="narrative">${esc(r.narrative)}</div>` : ''}</div>
       ${trackHTML(r)}
