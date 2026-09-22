@@ -1241,6 +1241,9 @@ const INTERVIEW_QS = [
    ============================================================ */
 const PROGRAMS = {
   "SAMFORD26": { name:"Samford Football", school:"Samford", conf:"FCS", st:"AL", p:"#003A70", x:"#C8102E", i:"2535", tag:"InHome Recruiting Data" },
+  /* Personal codes: one per coach, same board as the program. `board` is
+     the code the prospect board is stored under. */
+  "SWINNEY26": { name:"Samford Football", school:"Samford", conf:"FCS", st:"AL", p:"#003A70", x:"#C8102E", i:"2535", tag:"InHome Recruiting Data", board:"SAMFORD26", holder:"Drew Swinney" },
   "BAMA26": { name:"Alabama", school:"Alabama", conf:"SEC", st:"AL", p:"#9E1B32", x:"#828A8F", i:"333", tag:"InHome Recruiting Data" },
   "ARK26": { name:"Arkansas", school:"Arkansas", conf:"SEC", st:"AR", p:"#9D2235", x:"#FFFFFF", i:"8", tag:"InHome Recruiting Data" },
   "AUB26": { name:"Auburn", school:"Auburn", conf:"SEC", st:"AL", p:"#0C2340", x:"#E87722", i:"2", tag:"InHome Recruiting Data" },
@@ -1843,6 +1846,8 @@ async function openPortal(prog){
      openPortal only receives the program object, so find its code. */
   PROGRAM_CODE = '';
   for(var _c in PROGRAMS){ if(PROGRAMS[_c] === prog){ PROGRAM_CODE = _c; break; } }
+  /* A personal code (one coach's own login) reads the program's board. */
+  if(prog.board) PROGRAM_CODE = prog.board;
   REQUESTED = null; REQUESTED_ERR = null;
   /* An NFL scout has no prospect board with us; the market is the product. */
   if(isNFL()) currentView = 'market';
