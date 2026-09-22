@@ -1870,6 +1870,7 @@ function resetGateMark(){
 function goHome(){
   closeModal();
   if(typeof closeRequest === 'function') closeRequest();
+  REQUESTED = null; REQUESTED_ERR = null;   // re-fetch the board on the way home
   currentView   = isNFL() ? 'market' : 'requested';
   activeFilter  = 'ALL';
   classFilter   = 'ALL';
@@ -4271,11 +4272,18 @@ document.querySelectorAll('.vtab').forEach(t=>{
   });
 });
 document.getElementById('resetOrder').addEventListener('click', clearOrder);
+/* Refresh reloads every feed the portal holds in memory. Before this it
+   reloaded the reports only, so a board entry that changed after sign-in
+   (a merge, a new report on a listed player) stayed stale until the
+   coach signed out and back in. */
 document.getElementById('refreshBtn').addEventListener('click', async (e)=>{
   const b = e.currentTarget;
   b.disabled = true; b.textContent = 'Refreshing...';
+  REQUESTED = null; REQUESTED_ERR = null;
+  PERF = null; PERF_ERR = null;
+  MAP_PINS = null;
   await loadLiveReports();
-  renderCurrentView();
+  renderCurrentView();      // the active view re-fetches its own feed now that it is null
   renderHomeTicker();
   b.disabled = false; b.textContent = 'Refresh';
 });
