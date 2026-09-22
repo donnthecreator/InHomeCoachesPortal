@@ -112,8 +112,11 @@
   .cover-exit{background:transparent; border:1px solid #2A2A2A; color:#888888; font-size:12px; padding:7px 12px; border-radius:8px; letter-spacing:.04em;}
   .cover-tag{display:inline-block; margin-top:22px; background:var(--accent); color:var(--on-accent); font-family:'Anton',sans-serif;
         font-weight:600; font-size:12px; letter-spacing:.09em; text-transform:uppercase; padding:5px 11px; border-radius:20px;}
-  .cover-viewer{display:flex;align-items:center;gap:10px;margin-top:10px;font:500 13px/1.3 'Inter',system-ui,sans-serif;opacity:.85}
-  .cover-viewer img,.cover-viewer .cv-init{width:34px;height:34px;border-radius:50%;object-fit:cover;background:rgba(128,128,128,.25);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .cover-viewer{display:flex;align-items:center;gap:10px;margin-right:6px;font:500 13px/1.25 'Inter',system-ui,sans-serif;text-align:right}
+  .cover-viewer .cv-txt{display:flex;flex-direction:column;align-items:flex-end;opacity:.9}
+  .cover-viewer .cv-txt small{font-size:11px;opacity:.7;letter-spacing:.03em}
+  .cover-viewer img,.cover-viewer .cv-init{width:40px;height:40px;border-radius:50%;object-fit:cover;background:rgba(128,128,128,.25);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;border:2px solid rgba(255,255,255,.35)}
+  @media (max-width:640px){ .cover-viewer .cv-txt{display:none} }
   .cover-prog{font-size:38px; line-height:1; margin-top:12px;}
   .cover-note{color:#888888; font-size:14px; margin-top:10px; max-width:560px;}
   .demo-banner{background:#2A1F00; color:#E0A419; font-size:12.5px; font-weight:600; text-align:center; padding:8px 14px; letter-spacing:.02em;}
@@ -878,13 +881,13 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
             <div class="cover-logo" role="link" tabindex="0" title="Home" style="color:currentColor;cursor:pointer" onclick="goHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome()}">
         <svg viewBox="0 0 403.90 119.50" role="img" aria-label="InHome" style="height:46px;width:auto;display:block"><g fill="currentColor"><g transform="translate(22.00,95.50)"><g transform="translate(3.721,-54.000) scale(1.018868)"><path fill-rule="evenodd" d="M11 1.2 C11.5 1.2 12 1.4 12.4 1.8 L20.8 9.4 C21.6 10.1 21.7 11.3 21 12.1 C20.3 12.9 19.1 13 18.3 12.3 L11 5.7 L3.7 12.3 C2.9 13 1.7 12.9 1 12.1 C0.3 11.3 0.4 10.1 1.2 9.4 L9.6 1.8 C10 1.4 10.5 1.2 11 1.2 Z M4.2 22.5 C4.2 21.1 5.3 20 6.7 20 H15.3 C16.7 20 17.8 21.1 17.8 22.5 V70.5 C17.8 71.9 16.7 73 15.3 73 H6.7 C5.3 73 4.2 71.9 4.2 70.5 Z M5.2 44 C6.9 40.8 15.1 40.8 16.8 44 C15.1 47.2 6.9 47.2 5.2 44 Z" transform="translate(0,-20)"/></g><g transform="translate(27.400,0)"><g transform="translate(0.000,0.000) scale(0.050000,-0.050000)"><path d="M876 0V510Q876 547 872.0 604.5Q868 662 847.0 720.0Q826 778 778.5 817.0Q731 856 644 856Q609 856 569.0 845.0Q529 834 494.0 802.5Q459 771 436.5 710.0Q414 649 414 548L258 622Q258 750 310.0 862.0Q362 974 466.5 1043.0Q571 1112 730 1112Q857 1112 937.0 1069.0Q1017 1026 1061.5 960.0Q1106 894 1125.0 822.5Q1144 751 1148.0 692.0Q1152 633 1152 606V0ZM138 0V1080H380V722H414V0Z"/></g><g transform="translate(61.400,0.000) scale(0.050000,-0.050000)"><path d="M876 0V510Q876 547 872.0 604.5Q868 662 847.0 720.0Q826 778 778.5 817.0Q731 856 644 856Q609 856 569.0 845.0Q529 834 494.0 802.5Q459 771 436.5 710.0Q414 649 414 548L258 622Q258 750 310.0 862.0Q362 974 466.5 1043.0Q571 1112 730 1112Q857 1112 937.0 1069.0Q1017 1026 1061.5 960.0Q1106 894 1125.0 822.5Q1144 751 1148.0 692.0Q1152 633 1152 606V0ZM138 0V1440H380V700H414V0Z"/></g><g transform="translate(122.800,0.000) scale(0.050000,-0.050000)"><path d="M626 -30Q463 -30 340.0 43.0Q217 116 148.5 244.5Q80 373 80 540Q80 709 150.0 837.5Q220 966 343.0 1038.0Q466 1110 626 1110Q789 1110 912.5 1037.0Q1036 964 1105.0 835.5Q1174 707 1174 540Q1174 372 1104.5 243.5Q1035 115 911.5 42.5Q788 -30 626 -30ZM626 224Q757 224 821.5 312.5Q886 401 886 540Q886 684 820.5 770.0Q755 856 626 856Q537 856 480.0 816.0Q423 776 395.5 705.0Q368 634 368 540Q368 395 433.5 309.5Q499 224 626 224Z"/></g><g transform="translate(183.300,0.000) scale(0.050000,-0.050000)"><path d="M1440 0V638Q1440 745 1389.5 804.5Q1339 864 1250 864Q1193 864 1151.0 837.5Q1109 811 1085.5 763.5Q1062 716 1062 654L948 730Q948 841 1000.5 926.0Q1053 1011 1141.5 1058.5Q1230 1106 1338 1106Q1523 1106 1617.5 996.5Q1712 887 1712 710V0ZM138 0V1080H378V722H412V0ZM790 0V638Q790 745 739.5 804.5Q689 864 600 864Q515 864 463.5 805.5Q412 747 412 654L298 734Q298 840 351.0 924.0Q404 1008 493.5 1057.0Q583 1106 694 1106Q821 1106 902.5 1052.0Q984 998 1023.0 908.0Q1062 818 1062 710V0Z"/></g><g transform="translate(271.700,0.000) scale(0.050000,-0.050000)"><path d="M642 -30Q476 -30 349.5 41.5Q223 113 151.5 238.5Q80 364 80 526Q80 703 150.0 834.0Q220 965 343.0 1037.5Q466 1110 626 1110Q796 1110 915.0 1030.0Q1034 950 1091.0 805.0Q1148 660 1131 464H862V564Q862 729 809.5 801.5Q757 874 638 874Q499 874 433.5 789.5Q368 705 368 540Q368 389 433.5 306.5Q499 224 626 224Q706 224 763.0 259.0Q820 294 850 360L1122 282Q1061 134 929.5 52.0Q798 -30 642 -30ZM284 464V666H1000V464Z"/></g></g></g></g></svg>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="cover-viewer" id="coverViewer" style="display:none;"></div>
         <button class="dark-toggle" id="darkToggle" title="Toggle dark mode">&#9790;</button>
         <button class="cover-exit" id="exitBtn">Sign out</button>
       </div>
     </div>
         <div class="cover-prog" id="coverProg">Program</div>
-        <div class="cover-viewer" id="coverViewer" style="display:none;"></div>
   </div>
 
   <div id="homeTicker"></div>
@@ -1795,8 +1798,8 @@ function renderViewer(){
   var el = document.getElementById('coverViewer'); if(!el) return;
   if(!VIEWER || !VIEWER.name){ el.style.display = 'none'; el.innerHTML = ''; return; }
   var ini = VIEWER.name.split(' ').map(function(w){ return w[0]; }).filter(Boolean).slice(0,2).join('').toUpperCase();
-  el.innerHTML = (VIEWER.photoUrl ? '<img src="' + esc(VIEWER.photoUrl) + '" alt="">' : '<span class="cv-init">' + esc(ini) + '</span>')
-    + '<span>Signed in as <b>' + esc(VIEWER.name) + '</b>' + (VIEWER.title ? ' \u00b7 ' + esc(VIEWER.title) : '') + '</span>';
+  el.innerHTML = '<span class="cv-txt"><b>' + esc(VIEWER.name) + '</b>' + (VIEWER.title ? '<small>' + esc(VIEWER.title) + '</small>' : '') + '</span>'
+    + (VIEWER.photoUrl ? '<img src="' + esc(VIEWER.photoUrl) + '" alt="">' : '<span class="cv-init">' + esc(ini) + '</span>');
   el.style.display = '';
 }
 
@@ -1885,7 +1888,7 @@ async function openPortal(prog){
   const _logo = progLogoUrl(prog);
   const _mk = _logo
     ? `<img src="${_logo}" alt=""
-        style="width:34px;height:34px;object-fit:contain;background:#fff;border-radius:7px;padding:2px;vertical-align:-9px;margin-right:10px"
+        style="width:44px;height:44px;object-fit:contain;vertical-align:-11px;margin-right:12px"
         onerror="this.outerHTML='<span style=\\'display:inline-block;width:8px;height:30px;border-radius:3px;background:linear-gradient(180deg,${prog.p||'#555'},${prog.x||'#222'});vertical-align:-7px;margin-right:10px\\'></span>'">`
     : '';
   document.getElementById('coverProg').innerHTML = _mk + esc(prog.name);
