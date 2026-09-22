@@ -112,6 +112,8 @@
   .cover-exit{background:transparent; border:1px solid #2A2A2A; color:#888888; font-size:12px; padding:7px 12px; border-radius:8px; letter-spacing:.04em;}
   .cover-tag{display:inline-block; margin-top:22px; background:var(--accent); color:var(--on-accent); font-family:'Anton',sans-serif;
         font-weight:600; font-size:12px; letter-spacing:.09em; text-transform:uppercase; padding:5px 11px; border-radius:20px;}
+  .cover-viewer{display:flex;align-items:center;gap:10px;margin-top:10px;font:500 13px/1.3 'Inter',system-ui,sans-serif;opacity:.85}
+  .cover-viewer img,.cover-viewer .cv-init{width:34px;height:34px;border-radius:50%;object-fit:cover;background:rgba(128,128,128,.25);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
   .cover-prog{font-size:38px; line-height:1; margin-top:12px;}
   .cover-note{color:#888888; font-size:14px; margin-top:10px; max-width:560px;}
   .demo-banner{background:#2A1F00; color:#E0A419; font-size:12.5px; font-weight:600; text-align:center; padding:8px 14px; letter-spacing:.02em;}
@@ -882,6 +884,7 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
       </div>
     </div>
         <div class="cover-prog" id="coverProg">Program</div>
+        <div class="cover-viewer" id="coverViewer" style="display:none;"></div>
   </div>
 
   <div id="homeTicker"></div>
@@ -1732,14 +1735,47 @@ let REQUESTED = null;        // program's requested prospect board, loaded on de
 let REQ_SPLIT_ROLES = true;  // split a position by the board's roles (X / Z / H)
 let REQ_ROLE = '';           // 'WR|X' narrows the board to one role
 let REQUESTED_ERR = null;
-function tryEnter(raw){
+/* Who is signed in. Set from the coach record when a personal code is
+   used, so profile views are logged under his name. */
+let SESSION_CODE = '';
+let VIEWER = null;
+const ACCESS_URL = LIVE_URL.replace(/\/list-reports$/, '/portal-access');
+
+async function lookupCoach(code){
+  try{
+    const res = await fetch(ACCESS_URL + '?code=' + encodeURIComponent(code), { cache:'no-store' });
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(e){ return null; }
+}
+/* Build a program entry for a coach whose school is not in the hardcoded
+   list: colors and logo from the directory row. */
+function progFromCoach(c){
+  const school = c.school || (c.program && c.program.name) || 'Program';
+  let base = null;
+  for(var k in PROGRAMS){ var p = PROGRAMS[k]; if(!p.board && ((p.school||'').toLowerCase() === school.toLowerCase() || (p.name||'').toLowerCase() === school.toLowerCase())){ base = p; break; } }
+  const pr = c.program || {};
+  return Object.assign({}, base || { name: pr.name || school, school: school, conf: pr.conference || '', st: '', p: pr.color || '#111111', x: '#FFFFFF', i: pr.logoId || '', tag: 'InHome Recruiting Data' },
+                       { board: c.boardCode || (base ? Object.keys(PROGRAMS).find(k => PROGRAMS[k] === base) : ''), holder: c.name });
+}
+
+async function tryEnter(raw){
   const code = (raw||"").trim().toUpperCase();
-  const prog = PROGRAMS[code];
+  let prog = PROGRAMS[code];
+  const err = document.getElementById('gateErr');
+  SESSION_CODE = code; VIEWER = null;
   if(!prog){
-    document.getElementById('gateErr').textContent = "That code was not recognized.";
-    return;
+    err.textContent = "Checking...";
+    const c = await lookupCoach(code);
+    if(!c){ err.textContent = "That code was not recognized."; return; }
+    VIEWER = c;
+    prog = progFromCoach(c);
+  } else if(prog.holder){
+    /* A personal code that also lives in this file: pick up photo and title. */
+    lookupCoach(code).then(function(c){ if(c){ VIEWER = c; renderViewer(); } });
+    VIEWER = { code: code, name: prog.holder };
   }
-  document.getElementById('gateErr').textContent = "";
+  err.textContent = "";
 
   /* Light the mark in the program's colour before handing off. The eye
      picks up their school before they ever see the board. */
@@ -1753,6 +1789,15 @@ function tryEnter(raw){
   } else {
     openPortal(prog);
   }
+}
+
+function renderViewer(){
+  var el = document.getElementById('coverViewer'); if(!el) return;
+  if(!VIEWER || !VIEWER.name){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  var ini = VIEWER.name.split(' ').map(function(w){ return w[0]; }).filter(Boolean).slice(0,2).join('').toUpperCase();
+  el.innerHTML = (VIEWER.photoUrl ? '<img src="' + esc(VIEWER.photoUrl) + '" alt="">' : '<span class="cv-init">' + esc(ini) + '</span>')
+    + '<span>Signed in as <b>' + esc(VIEWER.name) + '</b>' + (VIEWER.title ? ' \u00b7 ' + esc(VIEWER.title) : '') + '</span>';
+  el.style.display = '';
 }
 
 /* ------------------------------------------------------------------
@@ -1857,6 +1902,8 @@ async function openPortal(prog){
   for(var _c in PROGRAMS){ if(PROGRAMS[_c] === prog){ PROGRAM_CODE = _c; break; } }
   /* A personal code (one coach's own login) reads the program's board. */
   if(prog.board) PROGRAM_CODE = prog.board;
+  if(!PROGRAM_CODE) PROGRAM_CODE = SESSION_CODE;
+  renderViewer();
   REQUESTED = null; REQUESTED_ERR = null;
   /* An NFL scout has no prospect board with us; the market is the product. */
   if(isNFL()) currentView = 'market';
@@ -1900,6 +1947,7 @@ function goHome(){
 }
 
 function signOut(){
+  SESSION_CODE = ''; VIEWER = null; renderViewer();
   document.getElementById('portal').classList.add('hidden');
   document.getElementById('gate').classList.remove('hidden');
   document.getElementById('codeInput').value = "";
@@ -3637,8 +3685,16 @@ function sendRequest(kind){
   fd.set('details', msg.trim() || '(none)');
   var btn = document.querySelector('#reqBody button.req-send');
   if(btn){ btn.disabled = true; btn.textContent = 'Sending...'; }
-  fetch('/', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: fd.toString() })
+  var REQ_FN = LIVE_URL.replace(/\/list-reports$/, '/portal-request');
+  fetch(REQ_FN, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      code: SESSION_CODE, viewerName: VIEWER && VIEWER.name || '', program: program, from: from, kind: t.label,
+      prospect: who, details: msg.trim(), ncaaPeriod: ncaaPeriod().period || '' }) })
     .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return true; })
+    .catch(function(){
+      /* Scout site unreachable: Netlify Forms as the backup path. */
+      return fetch('/', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: fd.toString() })
+        .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return true; });
+    })
     .then(function(){
       var bodyEl = document.getElementById('reqBody');
       if(bodyEl) bodyEl.innerHTML = '<div style="padding:26px 6px 10px;text-align:center"><div style="font-family:\'Anton\',sans-serif;font-size:22px;margin-bottom:8px">Request sent</div><div style="color:var(--mute);font-size:13px;line-height:1.5">' + esc(t.label) + (who ? ' for ' + esc(who) : '') + '. InHome will follow up' + (from ? ' at ' + esc(from) : '') + '.</div><button class="req-send" onclick="closeRequest()" style="margin-top:18px">Done</button></div>';
@@ -4180,7 +4236,8 @@ async function openPlayer(idOrName, school, basic){
   mod.innerHTML = '<div class="m-body"><div class="empty">Loading player...</div></div>';
   try{
     const q = (typeof idOrName === 'number' || /^\d+$/.test(String(idOrName))) ? 'id=' + idOrName : 'name=' + encodeURIComponent(idOrName) + '&school=' + encodeURIComponent(school||'');
-    const res = await fetch(PLAYER_URL + '?' + q, { cache:'no-store' });
+    const viewer = SESSION_CODE ? '&viewer=' + encodeURIComponent(SESSION_CODE) : '';
+    const res = await fetch(PLAYER_URL + '?' + q + viewer, { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const p = await res.json();
     if(p && p.error) throw new Error(p.error);
