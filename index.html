@@ -675,6 +675,13 @@
   .bcard.req[role=button]{cursor:pointer;}
   .bcard.req-pending{opacity:.62;}
   .bcard.req-pending:hover{border-color:#2A2A2A; opacity:.8;}
+
+  /* Role chips above the prospect board (X / Z / H) */
+  .req-roles{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px}
+  .req-chip{font:600 12px/1 'Inter',system-ui,sans-serif;letter-spacing:.04em;padding:8px 12px;border-radius:999px;border:1px solid rgba(128,128,128,.35);background:transparent;color:inherit;cursor:pointer}
+  .req-chip.on{background:var(--accent);color:var(--on-accent,#fff);border-color:transparent}
+  .req-chip-n{opacity:.65;margin-left:6px;font-weight:500}
+  .req-sep{width:1px;height:18px;background:rgba(128,128,128,.35);margin:0 4px}
   .req-status{font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#777; margin-top:3px; white-space:nowrap;}
   .req-status.done{color:#F5F5F5;}
   .bcol-n{float:right; font-family:'Inter',sans-serif; font-size:11px; font-weight:700; color:#888;}
@@ -1722,6 +1729,8 @@ function filmLinkHTML(url){
    ============================================================ */
 let PROGRAM_CODE = '';       // access code the program signed in with
 let REQUESTED = null;        // program's requested prospect board, loaded on demand
+let REQ_SPLIT_ROLES = true;  // split a position by the board's roles (X / Z / H)
+let REQ_ROLE = '';           // 'WR|X' narrows the board to one role
 let REQUESTED_ERR = null;
 function tryEnter(raw){
   const code = (raw||"").trim().toUpperCase();
@@ -3016,15 +3025,41 @@ function renderRequestedView(){
     return;
   }
 
-  /* Group by position, keep the scout-side position order where known. */
+  /* Roles inside a position (X / Z / H for receivers, LT / RT for
+     tackles) come from the program's own board. When a board carries
+     them, the list splits by role by default, so a receivers coach is
+     not scrolling one long column. The coach can collapse to one column
+     per position or narrow to a single role. */
+  const roleOf = function(x){ return (x.positionLabel || '').trim().toUpperCase(); };
+  const roles = {};
+  REQUESTED.forEach(function(x){ const r = roleOf(x); if(r && r !== (x.position||'')) (roles[x.position||'ATH'] = roles[x.position||'ATH'] || new Set()).add(r); });
+  const hasRoles = Object.keys(roles).some(function(k){ return roles[k].size > 1; });
+  const splitOn = hasRoles && REQ_SPLIT_ROLES;
+  const chips = hasRoles ? '<div class="req-roles">'
+      + '<button type="button" class="req-chip' + (splitOn && !REQ_ROLE ? ' on' : '') + '" data-roles="split">Split by role</button>'
+      + '<button type="button" class="req-chip' + (!splitOn ? ' on' : '') + '" data-roles="one">One list</button>'
+      + '<span class="req-sep"></span>'
+      + Object.keys(roles).sort().map(function(pos){ return Array.from(roles[pos]).sort().map(function(r){
+          const n = REQUESTED.filter(function(x){ return (x.position||'ATH')===pos && roleOf(x)===r; }).length;
+          return '<button type="button" class="req-chip' + (REQ_ROLE===pos+'|'+r ? ' on' : '') + '" data-roles="' + esc(pos+'|'+r) + '">' + esc(r) + '<span class="req-chip-n">' + n + '</span></button>';
+        }).join(''); }).join('')
+      + '</div>' : '';
+
+  const shown = REQ_ROLE ? REQUESTED.filter(function(x){ return (x.position||'ATH')+'|'+roleOf(x) === REQ_ROLE; }) : REQUESTED;
   const byPos = {};
-  REQUESTED.forEach(function(x){ const k = x.position || 'ATH'; (byPos[k] = byPos[k] || []).push(x); });
+  shown.forEach(function(x){
+    const pos = x.position || 'ATH';
+    const r = roleOf(x);
+    const k = (splitOn && r && roles[pos] && roles[pos].size > 1) ? pos + ' \u00b7 ' + r : pos;
+    (byPos[k] = byPos[k] || []).push(x);
+  });
   const order = Object.keys(byPos).sort(function(a,b){
-    const ia = POS_ORDER.indexOf(a), ib = POS_ORDER.indexOf(b);
+    const pa = a.split(' \u00b7 ')[0], pb = b.split(' \u00b7 ')[0];
+    const ia = POS_ORDER.indexOf(pa), ib = POS_ORDER.indexOf(pb);
     return (ia<0?99:ia) - (ib<0?99:ib) || a.localeCompare(b);
   });
 
-  host.innerHTML = '<div class="bcols">' + order.map(function(pos){
+  host.innerHTML = chips + '<div class="bcols">' + order.map(function(pos){
     const list = byPos[pos].slice().sort(function(a,b){
       if(a.status!==b.status) return a.status==='scouted' ? -1 : 1;
       return (Number(b.inhomeScore)||0) - (Number(a.inhomeScore)||0) || a.prospect.localeCompare(b.prospect);
@@ -3076,6 +3111,14 @@ document.addEventListener('keydown', function(e){
   if(card && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); card.click(); }
 });
 document.addEventListener('click', function(e){
+  const chip = e.target.closest && e.target.closest('.req-chip[data-roles]');
+  if(chip){
+    const v = chip.dataset.roles;
+    if(v === 'split'){ REQ_SPLIT_ROLES = true; REQ_ROLE = ''; }
+    else if(v === 'one'){ REQ_SPLIT_ROLES = false; REQ_ROLE = ''; }
+    else { REQ_ROLE = (REQ_ROLE === v) ? '' : v; REQ_SPLIT_ROLES = true; }
+    renderRequestedView(); return;
+  }
   const card = e.target.closest && e.target.closest('.bcard.req[data-pp]');
   if(!card) return;
   const x = (REQUESTED || [])[Number(card.dataset.pp)];
