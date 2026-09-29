@@ -4239,7 +4239,7 @@ async function openPlayer(idOrName, school, basic){
   mod.innerHTML = '<div class="m-body"><div class="empty">Loading player...</div></div>';
   try{
     const q = (typeof idOrName === 'number' || /^\d+$/.test(String(idOrName))) ? 'id=' + idOrName : 'name=' + encodeURIComponent(idOrName) + '&school=' + encodeURIComponent(school||'');
-    const viewer = SESSION_CODE ? '&viewer=' + encodeURIComponent(SESSION_CODE) : '';
+    const viewer = SESSION_CODE ? '&code=' + encodeURIComponent(SESSION_CODE) + '&viewer=' + encodeURIComponent(SESSION_CODE) : '';
     const res = await fetch(PLAYER_URL + '?' + q + viewer, { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const p = await res.json();
@@ -4305,7 +4305,7 @@ function offerChipHTML(o, commitment){
 function vchkP(p, f){ const v = (p.verifications||{})[f]; return v ? `<span class="vchk" title="Verified${v.source?' &middot; '+esc(v.source):''}${v.at?' &middot; '+esc(v.at):''}">&#10003;</span>` : ''; }
 function renderPlayer(p){
   const mod = document.getElementById('modal');
-  const byId = {}; REPORTS.forEach((r,i)=>{ byId[String(r.id)] = i; });
+  const byId = {}; REPORTS.forEach((r,i)=>{ if(r.id!=null) byId[String(r.id)] = i; });
   const best = p.reports.length ? p.reports.reduce((a,b)=>(b.score||0)>(a.score||0)?b:a) : null;
   const graded = p.games.filter(g=>g.grade!=null);
   const kv = [
@@ -4328,7 +4328,7 @@ function renderPlayer(p){
       </div>
     </div>
     <div class="pp-kv">${kv.map(([k,v])=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
-    ${(() => { const r0 = (p.reports||[])[0]; const i0 = r0 ? byId[String(r0.id)] : undefined;
+    ${(() => { const r0 = (p.reports||[])[0]; const i0 = (r0 && r0.id!=null) ? byId[String(r0.id)] : undefined;
       return i0 !== undefined ? `<div class="pp-sec" style="padding-bottom:8px;"><button class="film-btn" style="width:100%;" onclick="openReport(${i0})">Open full scouting report</button></div>` : ''; })()}
     <div class="pp-sec" style="padding-top:0;">${railHTML(p.name)}</div>
     ${p.reports.length ? `<div class="pp-sec"><h4>Scouting reports (${p.reports.length})</h4>${p.reports.map(r=>{ const idx = byId[String(r.id)];
