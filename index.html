@@ -1443,6 +1443,11 @@ function progLogoUrl(prog){
 const LIVE_URL = "https://inhomepdfreports.netlify.app/.netlify/functions/list-reports";
 const LIVE_KEY = null;   // only if you set PORTAL_ACCESS_KEY in Netlify
 
+/* Same player under two spellings. The built-in report says Kam Roberts and
+   the board says Kameron Roberts; both resolve to one key so the live report
+   replaces the built-in one and the board finds his report. */
+const NAME_ALIASES = { kamroberts: 'kameronroberts' };
+const aliasKey = (n) => { const k = String(n||'').toLowerCase().replace(/[^a-z]/g,''); return NAME_ALIASES[k] || k; };
 async function loadLiveReports(){
   if(!LIVE_URL) return false;
   try{
@@ -1453,7 +1458,7 @@ async function loadLiveReports(){
     const list = Array.isArray(data) ? data : (data && data.reports);
     if(!Array.isArray(list)) throw new Error('Bad response');
     if(!list.length) throw new Error('No reports returned');
-    const key = r => ((r.prospect||'').trim().toLowerCase()) + '|' + ((r.position||'').trim().toUpperCase());
+    const key = r => aliasKey(r.prospect) + '|' + ((r.position||'').trim().toUpperCase());
     const merged = new Map();
     REPORTS.forEach(r => merged.set(key(r), r));
     list.forEach(r => { if(!r.raw) r.raw = {}; merged.set(key(r), r); });
@@ -2705,7 +2710,7 @@ function marketDemoAllRows(){
    grade; the change is latest minus the week before. The stat line for
    each week rides along as the game log shown in the detail panel. If a
    scouting report exists for the same player, the row opens it. */
-const nameKeyOf = (n) => String(n||'').toLowerCase().replace(/[^a-z]/g,'');
+const nameKeyOf = (n) => aliasKey(n);
 function marketLiveAllRows(){
   if(!PERF) return [];
   const reportIdx = {};
