@@ -491,11 +491,11 @@
   .xgt-strip::before,.xgt-strip::after{content:''; position:absolute; top:0; bottom:0; width:44px; z-index:2; pointer-events:none;}
   .xgt-strip::before{left:0; background:linear-gradient(90deg,#000,transparent);}
   .xgt-strip::after{right:0; background:linear-gradient(270deg,#000,transparent);}
-  .xgt-track{display:flex; gap:28px; white-space:nowrap; width:max-content; animation:xgtScroll 85s linear infinite;}
-  .xgt-strip:hover .xgt-track{animation-play-state:paused;}
+  .xgt-track{display:flex; gap:28px; white-space:nowrap; width:max-content; animation:xgtScroll var(--xgt-dur,120s) linear infinite;}
+  .xgt-strip:hover .xgt-track,.xgt-strip.xgt-hold .xgt-track{animation-play-state:paused;}
   @keyframes xgtScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
   .xgt-item{display:inline-flex; align-items:baseline; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:#EDEFF4;
-      background:none; border:0; padding:0; margin:0; cursor:pointer; opacity:1; transition:opacity .12s ease;}
+      background:none; border:0; padding:6px 2px; margin:-6px 0; cursor:pointer; opacity:1; transition:opacity .12s ease; touch-action:manipulation;}
   .xgt-item:hover{opacity:.72;}
   .xgt-item:focus-visible{outline:2px solid #1B4DE4; outline-offset:3px; border-radius:4px;}
   .xgt-item b{font-weight:700; letter-spacing:.02em;}
@@ -1258,7 +1258,7 @@ const PROGRAMS = {
      the code the prospect board is stored under. */
   "SWINNEY26": { name:"Samford Football", school:"Samford", conf:"FCS", st:"AL", p:"#003A70", x:"#C8102E", i:"2535", tag:"InHome Recruiting Data", board:"SAMFORD26", holder:"Drew Swinney" },
   "STILLMAN26": { name:"Stillman Football", school:"Stillman", conf:"NAIA", st:"AL", p:"#002D62", x:"#C5A24A", logo:"logos/stillman.png", tag:"InHome Recruiting Data" },
-  "KEATON26": { name:"Stillman Football", school:"Stillman", conf:"NAIA", st:"AL", p:"#002D62", x:"#C5A24A", logo:"logos/stillman.png", tag:"InHome Recruiting Data", board:"STILLMAN26", holder:"Teddy Keaton" },
+  "KEATON26": { name:"Stillman Football", school:"Stillman", conf:"NAIA", st:"AL", p:"#002D62", x:"#C5A24A", logo:"logos/stillman.png", tag:"InHome Recruiting Data", board:"STILLMAN26", holder:"Teddy Keaton", title:"Head Coach", photo:"logos/teddy-keaton.jpg" },
   "BAMA26": { name:"Alabama", school:"Alabama", conf:"SEC", st:"AL", p:"#9E1B32", x:"#828A8F", i:"333", tag:"InHome Recruiting Data" },
   "ARK26": { name:"Arkansas", school:"Arkansas", conf:"SEC", st:"AR", p:"#9D2235", x:"#FFFFFF", i:"8", tag:"InHome Recruiting Data" },
   "AUB26": { name:"Auburn", school:"Auburn", conf:"SEC", st:"AL", p:"#0C2340", x:"#E87722", i:"2", tag:"InHome Recruiting Data" },
@@ -1782,8 +1782,10 @@ async function tryEnter(raw){
     prog = progFromCoach(c);
   } else if(prog.holder){
     /* A personal code that also lives in this file: pick up photo and title. */
-    lookupCoach(code).then(function(c){ if(c){ VIEWER = c; renderViewer(); } });
-    VIEWER = { code: code, name: prog.holder };
+    /* Photo and title carried in this file win over an admin record that
+       has none, so a hosted headshot never gets blanked by the lookup. */
+    lookupCoach(code).then(function(c){ if(c){ VIEWER = Object.assign({}, c, { photoUrl: c.photoUrl || prog.photo || '', title: c.title || prog.title || '' }); renderViewer(); } });
+    VIEWER = { code: code, name: prog.holder, title: prog.title || '', photoUrl: prog.photo || '' };
   }
   err.textContent = "";
 
@@ -2329,6 +2331,19 @@ function marketTickerHTML(items){
 function wireTicker(host, items){
   host.querySelectorAll('.xgt-item[data-tk]').forEach(btn=>{
     btn.addEventListener('click', ()=> openMarketDetail(items[Number(btn.dataset.tk)]));
+  });
+  /* Speed is set by content width, not a fixed loop time, so a long tape
+     scrolls at the same readable pace as a short one: about 40px a
+     second, never faster than a two-minute loop. A finger on the strip
+     holds it still so a name can be tapped; it resumes after the touch. */
+  host.querySelectorAll('.xgt-strip').forEach(strip=>{
+    const track = strip.querySelector('.xgt-track'); if(!track) return;
+    const half = track.scrollWidth / 2;
+    if(half > 0) strip.style.setProperty('--xgt-dur', Math.max(120, Math.round(half / 40)) + 's');
+    let t;
+    strip.addEventListener('touchstart', ()=>{ clearTimeout(t); strip.classList.add('xgt-hold'); }, {passive:true});
+    strip.addEventListener('touchend', ()=>{ t = setTimeout(()=> strip.classList.remove('xgt-hold'), 1500); }, {passive:true});
+    strip.addEventListener('touchcancel', ()=>{ strip.classList.remove('xgt-hold'); }, {passive:true});
   });
 }
 
