@@ -326,6 +326,14 @@
   .rec-filter.on{border-color:var(--accent); background:rgba(255,255,255,.05); color:#fff;}
   .rec-filter .dot{display:inline-block; width:7px; height:7px; border-radius:50%;
     background:var(--accent); margin-right:7px; vertical-align:1px;}
+  .stubs{margin:0 0 18px; padding:12px; border:1px dashed #3A3A3A; border-radius:12px;}
+  .stubs-h{display:flex; justify-content:space-between; align-items:center; font-size:11px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; color:#A0A0A0; margin-bottom:10px;}
+  .stubs-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px;}
+  .gl{border:1px solid #2A2A2A; border-radius:12px; padding:12px 14px; margin:2px 0 12px;}
+  .gl-row{display:flex; gap:10px; padding:5px 0; font-size:13px; line-height:1.45;}
+  .gl-k{flex:0 0 78px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--mute);}
+  .gl-tip{font-size:12px; color:var(--mute); margin-top:2px;}
+  .gl-note{font-size:10.5px; color:#7A8094; margin-top:6px;}
   .bcard-rec{display:block; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;
     color:var(--accent); font-weight:700; margin-top:4px;}
 
@@ -1427,6 +1435,7 @@ const CAN_DRAG = !!(window.matchMedia && window.matchMedia('(pointer: fine)').ma
 let lastDragEnd = 0;      // clicks within 250ms of a drop are the drop, not a tap
 let activeFilter = 'ALL';   // position filter currently selected
 let classFilter  = 'ALL';   // grad class filter, 'ALL' or a year string
+let ASSESSED_ONLY = [];     // players pointed at a program with no scouting report yet (Football IQ + personality read only)
 let recFilter    = false;   // true = only players a scout recommended to this program
 let PROGRAM_MATCH = '';     // normalized name of the signed-in program
 let PROGRAM_LABEL = '';     // display name of the signed-in program
@@ -1463,7 +1472,9 @@ async function loadLiveReports(){
     const key = r => aliasKey(r.prospect) + '|' + ((r.position||'').trim().toUpperCase());
     const merged = new Map();
     REPORTS.forEach(r => merged.set(key(r), r));
-    list.forEach(r => { if(!r.raw) r.raw = {}; merged.set(key(r), r); });
+    /* Assessment-only entries (unscouted) have no grades, so they never join the scored board. */
+    ASSESSED_ONLY = list.filter(r => r && r.unscouted).map(r => { if(!r.raw) r.raw = {}; return r; });
+    list.filter(r => !(r && r.unscouted)).forEach(r => { if(!r.raw) r.raw = {}; merged.set(key(r), r); });
     REPORTS.length = 0;
     merged.forEach(r => REPORTS.push(r));
     return true;
@@ -2166,7 +2177,8 @@ function recFitText(r){
     return x && x.program && x.program.replace(/[^A-Za-z0-9]/g,'').toUpperCase() === PROGRAM_MATCH; })[0];
   return (m && m.fit) ? m.fit : '';
 }
-function recCount(){ return REPORTS.filter(isRecommendedHere).length; }
+function assessedHere(){ return ASSESSED_ONLY.filter(function(r){ return isRecommendedHere(r) && matchesClass(r); }); }
+function recCount(){ return REPORTS.filter(isRecommendedHere).length + ASSESSED_ONLY.filter(isRecommendedHere).length; }
 function matchesRec(r){ return !recFilter || isRecommendedHere(r); }
 function toggleRecFilter(){ recFilter = !recFilter; renderCurrentView(); }
 
@@ -3205,13 +3217,35 @@ document.addEventListener('click', function(e){
 function renderBoardView(){
   const host = document.getElementById('viewHost');
   const cols = positionsPresent();
+  const stubList = assessedHere();
 
-  if(!cols.length){
+  if(!cols.length && !stubList.length){
     host.innerHTML = '<div class="empty">No reports on the board yet.</div>';
     return;
   }
 
-  host.innerHTML = '<div class="bcols">' + cols.map(pos=>{
+  /* Recommended to this program, scouting report still to come. Ranked by Football IQ. */
+  const stubIQ = (r) => { var m = -1; (r.assessments||[]).forEach(function(a){ if(a.pct != null && a.pct > m) m = a.pct; }); return m; };
+  const stubHTML = stubList.length ? `<div class="stubs">
+      <div class="stubs-h"><span>Recommended to you &middot; scouting report to follow</span><span class="bcol-n">${stubList.length}</span></div>
+      <div class="stubs-grid">${stubList.slice().sort(function(a,b){ return stubIQ(b) - stubIQ(a); }).map(function(r){
+        const iq = stubIQ(r); const gl = ((r.assessments||[]).filter(function(a){ return a.glance; })[0] || {}).glance;
+        return `<div class="bcard stubcard" draggable="false" data-stub="${ASSESSED_ONLY.indexOf(r)}" tabindex="0" role="button">
+          ${photoFor(r) ? `<img class="bcard-photo" src="${photoFor(r)}" alt="" onerror="this.style.display='none'">` : ''}
+          <div class="bcard-body">
+            <div class="bcard-name">${esc(r.prospect)}</div>
+            <span class="bcard-rec">&#9733; Recommended to you</span>
+            <div class="bcard-meta">${esc(r.school||'')}</div>
+            <div class="bcard-meta">${esc(r.position||'Position TBD')} &middot; ${esc(r.classYear||'')}</div>
+            ${gl && gl.learning ? `<div class="bcard-meta">Learns: ${esc(gl.learning.label)}</div>` : ''}
+          </div>
+          <div class="bcard-right">
+            <div class="bcard-score">${iq >= 0 ? Math.round(iq) + '%' : '&mdash;'}</div>
+            <div class="bcard-trk" style="opacity:.8">${iq >= 0 ? 'FB IQ' : 'No IQ yet'}</div>
+          </div>
+        </div>`; }).join('')}</div></div>` : '';
+
+  host.innerHTML = stubHTML + (cols.length ? '<div class="bcols">' : '<div style="display:none">') + cols.map(pos=>{
     const group = groupFor(pos);
     const cards = group.map(({r,i},rank)=>{
       const s = scoreReport(r);
@@ -3479,12 +3513,14 @@ function wireCards(host){
      handled by their own delegated handler, so leave them alone here. */
   root.addEventListener('click', e=>{
     const el = e.target.closest('.bcard');
+    if(el && el.dataset.stub !== undefined){ openAssessedOnly(+el.dataset.stub); return; }
     if(!el || el.dataset.i === undefined) return;
     if(Date.now() - lastDragEnd < 250) return;   // that click was the tail of a drop
     openReport(+el.dataset.i);
   });
   root.addEventListener('keydown', e=>{
     const el = e.target.closest('.bcard');
+    if(el && el.dataset.stub !== undefined){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openAssessedOnly(+el.dataset.stub); } return; }
     if(!el || el.dataset.i === undefined) return;
     if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openReport(+el.dataset.i); }
   });
@@ -4025,6 +4061,48 @@ function vchk(r, field){
 }
 /* Interview and Football IQ results filed by the athlete himself. */
 const IQ_LABEL = { iq:'Football IQ Assessment', interview:'Athlete Interview', full:'Athlete Assessment' };
+/* The thirty-second read: how he learns, how he leans, what drives him.
+   Built from the athlete's own picks on the assessment. A conversation
+   starter for a position coach, never a score. */
+function glanceHTML(g){
+  if(!g) return '';
+  var rows = [];
+  if(g.learning) rows.push(['Learns', '<b>' + esc(g.learning.label) + '</b> &middot; ' + esc(g.learning.says) + '<div class="gl-tip">Coaching tip: ' + esc(g.learning.tip) + '</div>']);
+  if(g.leans && g.leans.length) rows.push(['Style', g.leans.map(function(l){ return '<div>' + esc(l.text) + '</div>'; }).join('')]);
+  if(g.drives && g.drives.length) rows.push(['Drives', esc(g.drives.join(', then '))]);
+  if(g.film) rows.push(['Film habit', esc(g.film)]);
+  if(!rows.length) return '';
+  return '<div class="gl">' + rows.map(function(x){ return '<div class="gl-row"><div class="gl-k">' + x[0] + '</div><div>' + x[1] + '</div></div>'; }).join('')
+    + '<div class="gl-note">At a glance, from his own answers. A conversation starter, not a score.</div></div>';
+}
+/* Player pointed at this program with no scouting report yet: the Football IQ
+   and the at-a-glance read, with the report to follow. */
+function openAssessedOnly(idx){
+  const r = ASSESSED_ONLY[idx]; if(!r) return;
+  const mod = document.getElementById('modal'), ov = document.getElementById('overlay');
+  if(!mod || !ov) return;
+  const meta = [r.position, r.classYear ? 'Class of ' + r.classYear : ''].filter(Boolean).map(esc).join(' &middot; ');
+  const size = [r.height, fmtWeight(r.weight)].filter(Boolean).map(esc).join(' &middot; ');
+  mod.innerHTML = `
+    <div class="m-head">
+      <button class="m-close" onclick="closeModal()" aria-label="Close">&times;</button>
+      ${photoFor(r) ? `<img class="m-photo" src="${photoFor(r)}" alt="" onerror="this.style.display='none'">` : ''}
+      <div class="m-name">${esc(r.prospect)}</div>
+      <div class="m-sub">${meta || 'Position to be confirmed'}</div>
+      <div class="m-chips">
+        ${r.school ? `<span class="chip">${esc(r.school)}</span>` : ''}
+        ${size ? `<span class="chip">${size}</span>` : ''}
+        <span class="chip">InHome scouting report to follow</span>
+      </div>
+    </div>
+    <div class="m-body">
+      ${recBannerHTML(r)}
+      ${(r.assessments||[]).length ? assessmentHTML(r) : '<div class="sec"><div class="narrative">He has not completed the InHome athlete assessment yet.</div></div>'}
+      <div class="m-disc">InHome Recruiting Intelligence &middot; Assessment shown ahead of the scouting evaluation &middot; Program names listed for evaluation and fit purposes only; not affiliated with or endorsed by any institution listed.</div>
+    </div>`;
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
 function assessmentHTML(r){
   const list = r.assessments || []; if(!list.length) return '';
   return list.map(a => {
@@ -4033,6 +4111,7 @@ function assessmentHTML(r){
     return `<div class="sec">
       <div class="sec-h"><span class="sec-num">&#9679;</span><h3>${esc(IQ_LABEL[a.kind]||'Assessment')}</h3>
         <span class="wt">${a.pct!=null ? a.pct + '% \u00b7 ' + a.correct + '/' + a.total : 'completed'}${a.completed?' \u00b7 '+esc(a.completed):''}</span></div>
+      ${glanceHTML(a.glance)}
       ${a.pct!=null ? `<div class="iq-wrap"><div class="iq-top"><span style="font-weight:600;font-size:13px;color:var(--mute)">Answered by the athlete, film and multiple choice auto-scored</span><span class="iq-val">${a.pct}%</span></div>
         <div class="iq-track"><div class="iq-fill" style="width:${a.pct}%"></div></div></div>` : ''}
       ${a.diagnosis ? `<div style="margin-top:10px;">
