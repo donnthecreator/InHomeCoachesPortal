@@ -3160,7 +3160,9 @@ function renderRequestedView(){
           const right = x.status==='scouted'
             ? '<div class="bcard-score">' + (x.inhomeScore!=null ? Number(x.inhomeScore).toFixed(1) : '—') + '</div>'
               + '<div class="req-status done">' + esc(x.recommendationTier || 'Report ready') + '</div>'
-            : '<div class="req-status">Not yet scouted</div>';
+              + (x.fiq!=null ? '<div class="bcard-trk" style="opacity:.85">FB IQ ' + x.fiq + '%</div>' : '')
+            : (x.fiq!=null ? '<div class="bcard-score">' + x.fiq + '%</div><div class="bcard-trk" style="opacity:.85">FB IQ &middot; not yet scouted</div>'
+                           : '<div class="req-status">Not yet scouted</div>');
           /* The whole card opens his profile, scouted or not. The full
              report is a button inside the profile when one exists. */
           return '<div class="bcard req' + (hasReport ? '' : ' req-pending') + '"'
@@ -3172,6 +3174,7 @@ function renderRequestedView(){
             +   '<div class="bcard-name"><span class="plink" data-pid="' + (x.prospectId||'') + '" data-pname="' + esc(x.prospect) + '" data-pschool="' + esc(x.school||'') + '">' + esc(x.prospect) + '</span></div>'
             +   '<div class="bcard-meta">' + (x.logoUrl ? '<img class="mk-logo" src="' + esc(x.logoUrl) + '" alt="" onerror="this.remove()">' : '') + esc(x.school||'') + '</div>'
             +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
+            +   (x.learns ? '<div class="bcard-meta">Learns: ' + esc(x.learns) + '</div>' : '')
             +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
             + '</div>'
             + '<div class="bcard-right">' + right + '</div>'
