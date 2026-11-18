@@ -4331,6 +4331,55 @@ function barRow(lbl, val, wt){
     <span class="bar-track"><span class="bar-fill" data-w="${Math.min(val,100)}%" style="width:0"></span></span>
     <span class="bar-val">${Math.round(val)}</span></div>`;
 }
+/* Full assessment results on the player profile: the at-a-glance read, the
+   score and category breakdown, the personality read, the NIL read, his
+   written answers and the question-by-question detail. */
+function profileAssessmentHTML(a){
+  var label = a.kind==='iq' ? 'Football IQ' : a.kind==='full' ? 'Full assessment' : 'Interview';
+  var h = '<div style="padding:10px 0;border-top:1px solid #1E1E1E;font-size:13px;">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;"><b style="font-size:14px;">' + label + '</b>'
+     + '<span style="color:var(--mute);font-size:11.5px;">' + (a.pct!=null ? a.pct + '%' + (a.correct!=null && a.total ? ' &middot; ' + a.correct + '/' + a.total : '') : 'completed') + (a.completed ? ' &middot; ' + esc(a.completed) : '') + '</span></div>';
+  h += glanceHTML(a.glance);
+  if(a.pct!=null) h += '<div class="iq-track" style="margin:8px 0 10px;"><div class="iq-fill" style="width:' + a.pct + '%"></div></div>';
+  var d = a.diagnosis;
+  if(d){
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">' + (d.categories||[]).map(function(c){
+      return '<span class="chip" style="background:transparent;border:1px solid ' + (c.pct>=80?'#00C87A':c.pct<60?'#FF4D4D':'#2A2A2A') + ';">' + esc(c.name) + ' ' + c.correct + '/' + c.total + '</span>'; }).join('') + '</div>'
+       + '<div style="color:#C4C8D0;line-height:1.55;">' + esc(d.summary||'') + (d.profile ? '<br><br>' + esc(d.profile) : '') + '</div>'
+       + (d.note ? '<div style="font-size:10.5px;color:#7A8094;margin-top:6px;">' + esc(d.note) + '</div>' : '');
+  }
+  var pr = a.personality;
+  if(pr && pr.name){
+    var list = function(t, arr){ return arr && arr.length ? '<div style="margin-top:8px;"><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:700;margin-bottom:3px;">' + t + '</div>' + arr.map(function(x){ return '<div style="padding:1px 0;">&bull; ' + esc(x) + '</div>'; }).join('') + '</div>' : ''; };
+    h += '<div class="gl" style="margin-top:12px;"><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:700;">Personality read</div>'
+       + '<div style="font-size:15px;margin-top:4px;"><b>' + esc(pr.name) + '</b> &middot; ' + esc(pr.type) + '</div>'
+       + '<div style="color:#C4C8D0;margin-top:3px;">' + esc(pr.line||'') + '</div>'
+       + (pr.room ? '<div style="color:#C4C8D0;margin-top:6px;line-height:1.55;">' + esc(pr.room) + '</div>' : '')
+       + list('Strengths', pr.strengths) + list('Watch for', pr.watch) + list('How to coach him', pr.coach)
+       + '<div class="gl-note">A conversation starter from his own forced-choice answers, not a score or a verdict.</div></div>';
+  }
+  var n = a.nil;
+  if(n){
+    h += '<div class="gl" style="margin-top:10px;"><div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:700;">NIL and money</div>'
+       + (n.firstPriority ? '<div class="gl-row"><div class="gl-k">First</div><div>' + esc(n.firstPriority) + '</div></div>' : '')
+       + (n.secondPriority ? '<div class="gl-row"><div class="gl-k">Second</div><div>' + esc(n.secondPriority) + '</div></div>' : '')
+       + (n.tradeoff ? '<div class="gl-row"><div class="gl-k">Tradeoff</div><div>' + esc(n.tradeoff) + '</div></div>' : '')
+       + (n.representation ? '<div class="gl-row"><div class="gl-k">Rep</div><div>' + esc(n.representation) + '</div></div>' : '')
+       + '</div>';
+  }
+  if(a.written && a.written.length){
+    h += '<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--accent);font-weight:600;">His own answers (' + a.written.length + ')</summary>'
+       + a.written.map(function(w){ return '<div style="margin-top:9px;"><div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700;">' + esc(w.q) + '</div><div style="color:#C4C8D0;line-height:1.5;margin-top:2px;">' + esc(w.text) + '</div></div>'; }).join('') + '</details>';
+  }
+  if(a.detail && a.detail.length){
+    h += '<details style="margin-top:8px;"><summary style="cursor:pointer;color:var(--accent);font-weight:600;">Question by question (' + a.detail.length + ')</summary>'
+       + a.detail.map(function(q){ return '<div style="margin-top:9px;padding-left:9px;border-left:3px solid ' + (q.correct?'#00C87A':'#FF4D4D') + ';"><div style="line-height:1.45;">' + esc(q.q||'') + '</div>'
+         + '<div style="font-size:12px;color:var(--mute);margin-top:2px;">He said: ' + esc(q.given==null?'no answer':q.given) + (q.correct ? '' : ' &middot; Right answer: ' + esc(q.answer==null?'':q.answer)) + '</div>'
+         + (q.why && !q.correct ? '<div style="font-size:12px;color:#9AA0AE;margin-top:2px;">' + esc(q.why) + '</div>' : '') + '</div>'; }).join('') + '</details>';
+  }
+  if(a.resultsUrl) h += '<div style="margin-top:10px;"><a class="film-btn" href="' + esc(a.resultsUrl) + '" target="_blank" rel="noopener">Open printable results</a></div>';
+  return h + '</div>';
+}
 /* ---------------- PLAYER PROFILE (coach view) ---------------- */
 const PLAYER_URL = LIVE_URL.replace(/\/list-reports$/, '/player');
 /* `basic` is whatever the board already knows about him. If the profile
@@ -4446,7 +4495,7 @@ function renderPlayer(p){
         <div class="offers">${p.offers.map(o=>offerChipHTML(o, p.commitment)).join('')}</div>` : ''}
     </div>` : ''}
     ${(p.notes||[]).length ? `<div class="pp-sec"><h4>InHome notes</h4>${p.notes.map(n=>`<div style="padding:8px 0;border-top:1px solid #1E1E1E;font-size:13px;"><div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#777;font-weight:700;">${esc(n.kind)}${n.author?' &middot; '+esc(n.author):''}${n.date?' &middot; '+esc(n.date):''}</div><div style="color:#C4C8D0;line-height:1.55;white-space:pre-wrap;margin-top:3px;">${esc(n.body)}</div></div>`).join('')}</div>` : ''}
-    ${p.assessments.length ? `<div class="pp-sec"><h4>Assessments</h4>${p.assessments.map(a=>`<div style="padding:8px 0;border-top:1px solid #1E1E1E;font-size:13px;"><b>${a.kind==='iq'?'Football IQ':a.kind==='full'?'Full assessment':'Interview'}</b>${a.pct!=null?` &middot; ${a.pct}%`:''}${a.mbti?` &middot; ${esc(a.mbti)}`:''} <span style="color:var(--mute);font-size:11.5px;">${esc(a.completed||'')}</span>${a.diagnosis?`<div style="color:#C4C8D0;margin-top:4px;line-height:1.5;">${esc(a.diagnosis.summary)}</div>`:''}</div>`).join('')}</div>` : ''}
+    ${p.assessments.length ? `<div class="pp-sec"><h4>Assessments</h4>${p.assessments.map(profileAssessmentHTML).join('')}</div>` : ''}
     ${graded.length ? `<div class="pp-sec"><h4>Production (${graded.length} graded game${graded.length===1?'':'s'})</h4>${graded.slice(0,8).map(g=>`<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid #1E1E1E;font-size:12.5px;"><span style="min-width:58px;color:var(--mute)">${esc(g.date||'')}</span><span style="min-width:38px;font-family:'Anton',sans-serif;font-size:15px;">${g.grade.toFixed(1)}</span><span style="flex:1;color:#C4C8D0;">${esc(g.statLine||'')}</span></div>`).join('')}</div>` : ''}
     ${p.filmLink ? `<div class="pp-sec"><a class="film-btn" href="${esc(p.filmLink)}" target="_blank" rel="noopener">Watch film</a></div>` : ''}
     ${p._degraded ? `<div class="pp-sec"><div style="border:1px solid #4A3410;background:#1A1206;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#E0A419;">Full profile could not load right now (${esc(p._degraded)}). Showing what is on your board. The lookup links below still work.</div></div>` : ''}
