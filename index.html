@@ -1408,6 +1408,14 @@ const PROGRAMS = {
   "USM26": { name:"Southern Miss", school:"Southern Miss", conf:"Sun Belt", st:"MS", p:"#000000", x:"#FFAA3C", i:"2572", tag:"InHome Recruiting Data" },
   "TROY26": { name:"Troy", school:"Troy", conf:"Sun Belt", st:"AL", p:"#8A2432", x:"#000000", i:"2653", tag:"InHome Recruiting Data" },
 
+  /* ---------- HIGH SCHOOL ----------
+     tier:'hs' scopes the portal to that school's own roster: their players
+     and their scouting status, nothing from any other program. A high school
+     is where prospects come from, not a program recruiting them, so the
+     recommendation, market and map views are hidden. */
+  "GATEWAY26": { name:"Gateway Olympians Football", school:"Gateway HS", conf:"5A East Metro", st:"CO", p:"#F47B20", x:"#FFC72C",
+                 tag:"InHome High School", tier:"hs" },
+
   /* ---------- NFL ----------
      One code per scout. tier:'nfl' unlocks evaluations on enrolled college
      players and swaps the compliance wording to the evaluation-service
@@ -1444,6 +1452,7 @@ let PROGRAM_LABEL = '';     // display name of the signed-in program
    cannot, and the compliance wording changes to match. */
 let PROGRAM_TIER  = 'college';
 const isNFL = () => PROGRAM_TIER === 'nfl';
+const isHS  = () => PROGRAM_TIER === 'hs';
 /* A program entry may carry an explicit logo URL (NFL clubs) or an ESPN
    college id (everything else). */
 function progLogoUrl(prog){
@@ -1955,7 +1964,7 @@ function goHome(){
   closeModal();
   if(typeof closeRequest === 'function') closeRequest();
   REQUESTED = null; REQUESTED_ERR = null;   // re-fetch the board on the way home
-  currentView   = isNFL() ? 'market' : 'requested';
+  currentView   = isNFL() ? 'market' : 'requested';   // a HS lands on its own roster
   activeFilter  = 'ALL';
   classFilter   = 'ALL';
   recFilter     = false;
@@ -3806,9 +3815,16 @@ function renderSidePanel(){
   var rn = document.getElementById('reqNote');
   if(rn) rn.textContent = isNFL()
     ? 'Film and scout requests route through InHome. Player contact goes through the school\'s pro liaison.'
+    : isHS()
+    ? 'Requests route through InHome. We push your players\' film to college staffs and come back with what we hear.'
     : 'Requests route through InHome. We handle contact and compliance, then come back to you.';
   /* Hide the prospect-board nav entries an NFL scout has no use for. */
   document.querySelectorAll('.side-nav[data-view="requested"], .vtab[data-view="requested"]').forEach(function(b){ b.style.display = isNFL() ? 'none' : ''; });
+  /* A high school sees its own roster and nothing else: no other program's
+     recommendations, no national production market, no map of everyone. */
+  document.querySelectorAll('.side-nav[data-view="board"], .vtab[data-view="board"], .side-nav[data-view="market"], .vtab[data-view="market"], .side-nav[data-view="map"], .vtab[data-view="map"]')
+    .forEach(function(b){ b.style.display = isHS() ? 'none' : ''; });
+  if(isHS()) document.querySelectorAll('.side-nav[data-view="requested"], .vtab[data-view="requested"]').forEach(function(b){ b.textContent = 'Our Prospects'; });
 }
 /* Switching views swaps the contents of #viewHost but leaves the page
    scrolled where it was, so the new view can render off screen: below the
