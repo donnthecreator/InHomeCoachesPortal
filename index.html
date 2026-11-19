@@ -3162,14 +3162,24 @@ function renderRequestedView(){
       return (Number(b.inhomeScore)||0) - (Number(a.inhomeScore)||0) || a.prospect.localeCompare(b.prospect);
     });
     const done = list.filter(function(x){return x.status==='scouted';}).length;
+    /* A high school is looking at its own roster, so the scouting progress
+       count is not theirs to track: show how many players, not how many of
+       them InHome has worked. */
     return '<div class="bcol">'
-      + '<div class="bcol-head">' + esc(pos) + '<span class="bcol-n">' + done + '/' + list.length + '</span></div>'
+      + '<div class="bcol-head">' + esc(pos) + '<span class="bcol-n">' + (isHS() ? list.length : done + '/' + list.length) + '</span></div>'
       + list.map(function(x){
           const idx = reportIndexFor(x.reportId);
           const hasReport = x.status==='scouted' && idx >= 0;
           const photo = x.headshotUrl ? '<img class="bcard-photo" src="' + esc(x.headshotUrl) + '" alt="" onerror="this.style.display=\'none\'">' : '';
           const meta2 = [x.classYear ? 'Class of ' + esc(x.classYear) : '', x.homeState ? esc(x.homeState) : ''].filter(Boolean).join(' · ');
-          const right = x.status==='scouted'
+          /* On a high school's own board we show what we have on a player
+             (score, Football IQ) and nothing about what we have not done
+             yet: "Not yet scouted" against his own kids reads as a backlog
+             to the coach who sent them to us. */
+          const right = isHS()
+            ? (x.status==='scouted' && x.inhomeScore!=null ? '<div class="bcard-score">' + Number(x.inhomeScore).toFixed(1) + '</div><div class="bcard-trk" style="opacity:.85">InHome Score</div>' : '')
+              + (x.fiq!=null ? '<div class="bcard-trk" style="opacity:.85">FB IQ ' + x.fiq + '%</div>' : '')
+            : x.status==='scouted'
             ? '<div class="bcard-score">' + (x.inhomeScore!=null ? Number(x.inhomeScore).toFixed(1) : '—') + '</div>'
               + '<div class="req-status done">' + esc(x.recommendationTier || 'Report ready') + '</div>'
               + (x.fiq!=null ? '<div class="bcard-trk" style="opacity:.85">FB IQ ' + x.fiq + '%</div>' : '')
