@@ -326,6 +326,39 @@
   .rec-filter.on{border-color:var(--accent); background:rgba(255,255,255,.05); color:#fff;}
   .rec-filter .dot{display:inline-block; width:7px; height:7px; border-radius:50%;
     background:var(--accent); margin-right:7px; vertical-align:1px;}
+  .res-wrap{max-width:860px;}
+  .res-pick{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 16px; font-size:12px; color:var(--mute);}
+  .res-pick label{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:700;}
+  .res-pick select{background:#141414; color:#F5F5F5; border:1px solid #2A2A2A; border-radius:8px; padding:8px 10px; font-size:13px;}
+  .res-pick-note{flex-basis:100%; font-size:11.5px;}
+  .res-card{border:1px solid #242424; border-radius:14px; padding:16px 18px; margin-bottom:14px; background:#0F0F0F;}
+  .res-h{display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:12px;}
+  .res-h h3{margin:2px 0 4px; font-size:16px;}
+  .res-k{font-size:10px; letter-spacing:.14em; color:var(--accent); font-weight:800;}
+  .res-sub{font-size:12.5px; color:var(--mute); line-height:1.5; max-width:560px;}
+  .res-send{flex:0 0 auto; background:var(--accent); color:#fff; border:0; border-radius:9px; padding:10px 14px; font-weight:800; font-size:12.5px; cursor:pointer; white-space:nowrap;}
+  .res-send:hover{filter:brightness(1.08);}
+  .res-tbl{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .res-tbl td{padding:8px 6px; border-top:1px solid #1E1E1E; vertical-align:top; line-height:1.45;}
+  .res-when{width:150px; white-space:nowrap; color:#C4C8D0; font-weight:700;}
+  .res-who{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-left:6px; font-weight:700;}
+  .res-means{color:#9AA0AE; margin-top:2px;}
+  .res-notes{margin:10px 0 0; padding-left:18px; font-size:12px; color:#9AA0AE; line-height:1.55;}
+  .res-links{margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; align-items:center; font-size:12px;}
+  .res-links a{color:var(--accent); font-weight:700;}
+  .res-src{color:#666; font-size:11px;}
+  .res-camps{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
+  .res-camp{display:block; border:1px solid #242424; border-radius:10px; padding:10px 12px; text-decoration:none; color:inherit;}
+  .res-camp:hover{border-color:var(--accent);}
+  .res-camp-s{font-weight:800; font-size:13.5px;}
+  .res-camp-l{font-size:11px; color:var(--accent); font-weight:700; letter-spacing:.04em; margin-top:2px;}
+  .res-camp-d{font-size:11.5px; color:#9AA0AE; margin-top:5px; line-height:1.45;}
+  .res-pb{border:1px dashed #3A3A3A; border-radius:10px; padding:12px 14px;}
+  .res-pb-code{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); font-weight:700;}
+  .res-pb a{color:var(--accent); font-weight:700; word-break:break-all;}
+  .res-pb-note{font-size:12px; color:#9AA0AE; margin-top:6px;}
+  .res-foot{font-size:11.5px; color:#666; margin-top:6px;}
+  @media (max-width:640px){ .res-h{flex-direction:column;} .res-send{width:100%;} .res-when{width:auto; white-space:normal;} }
   .hs-tabs{margin-bottom:14px;}
   .hs-pdf{border-color:var(--accent) !important; color:var(--accent) !important;}
   .hsflag{margin-top:8px; width:100%; padding:7px 9px; border-radius:8px; border:1px dashed #3A3A3A;
@@ -924,6 +957,7 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
       <button class="side-nav" data-view="board">Scout Recommended</button>
       <button class="side-nav" data-view="market">Production Market</button>
       <button class="side-nav" data-view="map">Map</button>
+      <button class="side-nav hs-only" data-view="resources" style="display:none">Parent Resources</button>
     </div>
 
     <div class="side-sec">
@@ -957,6 +991,7 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
         <button class="vtab" data-view="board">Scout Recommended</button>
         <button class="vtab" data-view="market">Production Market</button>
         <button class="vtab" data-view="map">Map</button>
+        <button class="vtab hs-only" data-view="resources" style="display:none">Parent Resources</button>
       </div>
       <div class="head-right">
         <div class="cnt" id="boardCnt"></div>
@@ -3268,6 +3303,177 @@ function downloadProspectPdf(){
   window.open(PROSPECT_PDF_URL + '?code=' + encodeURIComponent(PROGRAM_CODE), '_blank', 'noopener');
 }
 
+/* =====================================================================
+   PARENT RESOURCES (high school tier)
+   Three things a head coach sends a parent in one tap: where college
+   coaches are allowed to be right now, the camps near them worth watching,
+   and the family's link into the InHome Parent Playbook. The coach picks a
+   player (optional), taps Send, and his phone's share sheet opens with the
+   message written. Nothing sends from InHome's side: no Twilio, no email
+   list, the coach's own number, which is who the parent expects it from.
+   Dates below come from the NCAA's published 2026-27 calendars; the spring
+   2027 football periods were not yet posted when this was written.
+===================================================================== */
+const HS_RESOURCES = {
+  calendar: {
+    updated: 'NCAA 2026-27 Division I football calendars, posted July 30, 2026',
+    links: [
+      { label: 'NCAA FBS calendar (PDF)', url: 'https://ncaaorg.s3.amazonaws.com/compliance/recruiting/calendar/2026-27/2026-27D1Rec_FBSRecruitingCalendar.pdf' },
+      { label: 'NCAA FCS calendar (PDF)', url: 'https://ncaaorg.s3.amazonaws.com/compliance/recruiting/calendar/2026-27/2026-27D1Rec_FCSRecruitingCalendar.pdf' }
+    ],
+    periods: [
+      { when: 'Aug 1 - 31, 2026',        what: 'Quiet period',                 who: 'FBS and FCS', means: 'Coaches can meet your family only on their own campus. Visits happen; nobody comes to you.' },
+      { when: 'Sep 1 - Nov 29, 2026',    what: 'Evaluation period',            who: 'FBS and FCS', means: 'Coaches can come watch him play or practice. They cannot sit down with you off campus.' },
+      { when: 'Nov 30 - Dec 31, 2026',   what: 'Dead period',                  who: 'FBS',         means: 'No in-person contact anywhere and no campus visits. Calls, texts and email still happen.' },
+      { when: 'Nov 30 - Dec 3, 2026',    what: 'Dead period',                  who: 'FCS',         means: 'Same rules as above, shorter window.' },
+      { when: 'Dec 2 - 4, 2026',         what: 'Early signing period',         who: 'Division I',  means: 'Seniors with an offer can sign.' },
+      { when: 'Dec 4 - 18, 2026',        what: 'Contact period',               who: 'FCS',         means: 'Coaches can come to your home and to his school. This is when the home visits happen.' },
+      { when: 'Dec 18 - 20, 2026',       what: 'Quiet period',                 who: 'FCS',         means: 'Campus only again.' },
+      { when: 'Dec 21 - 31, 2026',       what: 'Dead period',                  who: 'FCS',         means: 'Holiday shutdown. Calls and texts continue.' }
+    ],
+    notes: [
+      'Division II has its own calendar with the same kinds of periods.',
+      'Division III and NAIA coaches are not bound by these periods and can be in touch with your family year round.',
+      'Spring 2027 dates for Division I football had not been posted by the NCAA when this was written. We add them when they are.'
+    ]
+  },
+  camps: {
+    CO: {
+      note: 'Most programs post 2027 summer camp dates between February and April. These links go to each program’s camp or football page; 2026 dates are shown where a program has posted them, as a guide to when they usually run.',
+      list: [
+        { school: 'Colorado (CU Boulder)',       level: 'FBS · Big 12',         city: 'Boulder',          url: 'https://cubuffs.com/fbcamp',                       last: '2026: Elite Camp June 4 ($100, grades 9-12), specialist camp June 17' },
+        { school: 'Colorado State',              level: 'FBS · Mountain West',  city: 'Fort Collins',     url: 'https://csurams.com',                              last: 'Camps page on csurams.com; prospect camps have run in June and July' },
+        { school: 'Air Force',                   level: 'FBS · Mountain West',  city: 'Colorado Springs', url: 'https://www.goairforcefalcons.com/camps/',         last: '1-Day Thunder camps for rising juniors and seniors, $50, registration opens in May' },
+        { school: 'Northern Colorado',           level: 'FCS · Big Sky',        city: 'Greeley',          url: 'https://register.ryzer.com/camp.cfm?id=326297',    last: '2026: Mega Camp June 20, grades 8 through college junior' },
+        { school: 'CSU Pueblo',                  level: 'D2 · RMAC',            city: 'Pueblo',           url: 'https://register.ryzer.com/camp.cfm?id=296272',    last: 'High school team camp in mid-July; individual camps listed on the same page' },
+        { school: 'Colorado School of Mines',    level: 'D2 · RMAC',            city: 'Golden',           url: 'https://minesathletics.com/football',              last: 'Camps are announced on the football page in spring' },
+        { school: 'Colorado Mesa',               level: 'D2 · RMAC',            city: 'Grand Junction',   url: 'https://www.google.com/search?q=Colorado+Mesa+football+camp', last: 'Announced in spring' },
+        { school: 'Western Colorado',            level: 'D2 · RMAC',            city: 'Gunnison',         url: 'https://www.google.com/search?q=Western+Colorado+University+football+camp', last: 'Announced in spring' },
+        { school: 'Fort Lewis',                  level: 'D2 · RMAC',            city: 'Durango',          url: 'https://www.google.com/search?q=Fort+Lewis+College+football+camp', last: 'Announced in spring' },
+        { school: 'Adams State',                 level: 'D2 · RMAC',            city: 'Alamosa',          url: 'https://www.google.com/search?q=Adams+State+football+camp', last: 'Announced in spring' }
+      ]
+    }
+  },
+  playbook: {
+    base: 'https://inhomerecruiting.com/playbook',
+    blurb: 'A free nine-module course for football families on how recruiting actually works: film, camps, the calendar, eligibility, visits, offers and NIL, in plain language, plus Coach AI to answer questions. Included with the school’s InHome license.'
+  }
+};
+
+function hsCoachName(){
+  if(VIEWER && VIEWER.name){
+    const parts = String(VIEWER.name).trim().split(/\s+/);
+    return 'Coach ' + parts[parts.length - 1];
+  }
+  return 'the ' + ((PROGRAMS[SESSION_CODE] || {}).school || 'football') + ' staff';
+}
+function hsSchoolShort(){ return (PROGRAMS[SESSION_CODE] || {}).school || (PROGRAMS[SESSION_CODE] || {}).name || 'our program'; }
+function hsPlayerFirst(){
+  const sel = document.getElementById('resPlayer');
+  if(!sel || !sel.value) return '';
+  const x = (REQUESTED || []).find(function(r){ return String(r.prospectId) === sel.value; });
+  return x ? String(x.prospect).trim().split(/\s+/)[0] : '';
+}
+function hsPlaybookUrl(){ return HS_RESOURCES.playbook.base + '?code=' + encodeURIComponent(PROGRAM_CODE || SESSION_CODE); }
+
+function hsMessage(kind){
+  const coach = hsCoachName(), school = hsSchoolShort(), first = hsPlayerFirst();
+  const his = first ? first + "'s" : 'his';
+  const hi = 'Hi, this is ' + coach + ' at ' + school + ' Football. ';
+  if(kind === 'calendar'){
+    const c = HS_RESOURCES.calendar;
+    const now = new Date();
+    const lines = [
+      hi + 'A quick note on where college coaches are allowed to be in ' + his + ' recruiting right now:',
+      '',
+      '- Through Nov 29: evaluation period. Coaches can come watch him; they cannot meet you off campus.',
+      '- Nov 30 to Dec 31: dead period for FBS schools (FCS reopens Dec 4-18 for home visits). No in-person contact or campus visits in a dead period, but calls and texts still happen.',
+      '- Dec 2-4: early signing period for seniors with an offer.',
+      '- Division III and NAIA coaches are not bound by these dates and can talk with you year round.',
+      '',
+      'Official NCAA calendars:',
+      c.links[0].url,
+      c.links[1].url,
+      '',
+      'Text me back with any questions.'
+    ];
+    return lines.join('\n');
+  }
+  if(kind === 'camps'){
+    const st = ((PROGRAMS[SESSION_CODE] || {}).st || 'CO').toUpperCase();
+    const set = HS_RESOURCES.camps[st] || HS_RESOURCES.camps.CO;
+    const lines = [hi + 'College camps are where coaches evaluate players in person, and most 2027 summer dates post between February and April. These are the programs near us worth watching for ' + (first || 'him') + ':', ''];
+    set.list.forEach(function(k){ lines.push('- ' + k.school + ' (' + k.level.replace(' · ', ', ') + '): ' + k.url); });
+    lines.push('', 'I will send dates as they post. The ones at his level matter more than the biggest name.');
+    return lines.join('\n');
+  }
+  /* playbook */
+  return [
+    hi + 'Our program gives every football family the InHome Parent Playbook, a free step-by-step course on how recruiting actually works, with a coach you can ask questions any time.',
+    '',
+    'Open it here: ' + hsPlaybookUrl(),
+    'Team code if it asks: ' + (PROGRAM_CODE || SESSION_CODE),
+    '',
+    'Start with Module 1 and set ' + his + ' class year. It takes about ten minutes a module.'
+  ].join('\n');
+}
+
+async function hsShare(kind, btn){
+  const text = hsMessage(kind);
+  const label = btn ? btn.textContent : '';
+  try{
+    if(navigator.share){ await navigator.share({ text: text }); return; }
+  }catch(err){ if(err && err.name === 'AbortError') return; }
+  /* No share sheet (desktop): copy it, and offer the texting app. */
+  try{ await navigator.clipboard.writeText(text); if(btn){ btn.textContent = 'Copied. Paste it into a text or email.'; setTimeout(function(){ btn.textContent = label; }, 2600); } }
+  catch(e){ window.prompt('Copy this message:', text); }
+}
+
+function renderResourcesView(){
+  const host = document.getElementById('viewHost');
+  if(REQUESTED === null){ loadRequested().then(function(){ if(currentView==='resources') renderCurrentView(); }); }
+  const c = HS_RESOURCES.calendar;
+  const st = ((PROGRAMS[SESSION_CODE] || {}).st || 'CO').toUpperCase();
+  const camps = HS_RESOURCES.camps[st] || HS_RESOURCES.camps.CO;
+  const players = (REQUESTED || []).slice().sort(function(a,b){ return a.prospect.localeCompare(b.prospect); });
+  const cur = (document.getElementById('resPlayer') || {}).value || '';
+  const picker = '<div class="res-pick"><label for="resPlayer">Sending about</label>'
+    + '<select id="resPlayer"><option value="">a player (optional)</option>'
+    + players.map(function(x){ return '<option value="' + x.prospectId + '"' + (String(x.prospectId)===cur ? ' selected' : '') + '>' + esc(x.prospect) + (x.classYear ? ' · ' + esc(x.classYear) : '') + '</option>'; }).join('')
+    + '</select><span class="res-pick-note">Puts his name in the message. Your phone’s share sheet opens; you pick the parent and the app.</span></div>';
+
+  const calCard = '<div class="res-card">'
+    + '<div class="res-h"><div><div class="res-k">01</div><h3>Recruiting calendar</h3><div class="res-sub">Where college coaches are allowed to be, in plain language</div></div>'
+    + '<button type="button" class="res-send" data-res="calendar">Send to a parent</button></div>'
+    + '<table class="res-tbl"><tbody>' + c.periods.map(function(p){
+        return '<tr><td class="res-when">' + esc(p.when) + '</td><td><b>' + esc(p.what) + '</b> <span class="res-who">' + esc(p.who) + '</span><div class="res-means">' + esc(p.means) + '</div></td></tr>'; }).join('')
+    + '</tbody></table>'
+    + '<ul class="res-notes">' + c.notes.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
+    + '<div class="res-links">' + c.links.map(function(l){ return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + '</a>'; }).join('') + '<span class="res-src">' + esc(c.updated) + '</span></div>'
+    + '</div>';
+
+  const campCard = '<div class="res-card">'
+    + '<div class="res-h"><div><div class="res-k">02</div><h3>Camps near you</h3><div class="res-sub">' + esc(camps.note) + '</div></div>'
+    + '<button type="button" class="res-send" data-res="camps">Send to a parent</button></div>'
+    + '<div class="res-camps">' + camps.list.map(function(k){
+        return '<a class="res-camp" href="' + esc(k.url) + '" target="_blank" rel="noopener"><div class="res-camp-s">' + esc(k.school) + '</div><div class="res-camp-l">' + esc(k.level) + ' · ' + esc(k.city) + '</div><div class="res-camp-d">' + esc(k.last) + '</div></a>'; }).join('')
+    + '</div></div>';
+
+  const pbCard = '<div class="res-card">'
+    + '<div class="res-h"><div><div class="res-k">03</div><h3>Parent Playbook</h3><div class="res-sub">' + esc(HS_RESOURCES.playbook.blurb) + '</div></div>'
+    + '<button type="button" class="res-send" data-res="playbook">Send to a parent</button></div>'
+    + '<div class="res-pb"><div class="res-pb-code">Team link</div><a href="' + esc(hsPlaybookUrl()) + '" target="_blank" rel="noopener">' + esc(hsPlaybookUrl()) + '</a>'
+    + '<div class="res-pb-note">Opens unlocked for your families. The code is ' + esc(PROGRAM_CODE || SESSION_CODE) + ' if a parent is asked for one.</div></div>'
+    + '</div>';
+
+  host.innerHTML = '<div class="res-wrap">' + picker + calCard + campCard + pbCard
+    + '<div class="res-foot">Messages go out from your phone, in your name. InHome does not text or email parents on your behalf.</div></div>';
+}
+document.addEventListener('click', function(e){
+  const b = e.target.closest && e.target.closest('.res-send');
+  if(b){ hsShare(b.dataset.res, b); }
+});
+
 /* Prospect board cards: one delegated handler, so a re-render never
    loses the binding and an inline quote in a name can never break it. */
 function openProspectCard(card){
@@ -3907,6 +4113,7 @@ function renderSidePanel(){
   document.querySelectorAll('.side-nav[data-view="board"], .vtab[data-view="board"], .side-nav[data-view="market"], .vtab[data-view="market"], .side-nav[data-view="map"], .vtab[data-view="map"]')
     .forEach(function(b){ b.style.display = isHS() ? 'none' : ''; });
   if(isHS()) document.querySelectorAll('.side-nav[data-view="requested"], .vtab[data-view="requested"]').forEach(function(b){ b.textContent = 'Our Prospects'; });
+  document.querySelectorAll('.hs-only').forEach(function(b){ b.style.display = isHS() ? '' : 'none'; });
 }
 /* Switching views swaps the contents of #viewHost but leaves the page
    scrolled where it was, so the new view can render off screen: below the
@@ -3962,7 +4169,9 @@ function renderCurrentView(){
   renderSidePanel();
   const shown = REPORTS.filter(function(r){ return matchesClass(r) && matchesRec(r); }).length;
   document.getElementById('boardCnt').textContent =
-    currentView==='requested' ? (REQUESTED ? REQUESTED.length + ' requested · ' + REQUESTED.filter(function(x){return x.status==='scouted';}).length + ' evaluated' : 'Loading...')
+    currentView==='resources' ? 'Send to a parent in one tap'
+    : (currentView==='requested' && isHS()) ? (REQUESTED ? REQUESTED.length + ' on the roster · ' + REQUESTED.filter(function(x){return x.isProspect;}).length + ' prospects' : 'Loading...')
+    : currentView==='requested' ? (REQUESTED ? REQUESTED.length + ' requested · ' + REQUESTED.filter(function(x){return x.status==='scouted';}).length + ' evaluated' : 'Loading...')
     : (currentView==='market') ? (PERF ? marketLiveAllRows().length + ' tracked' : 'Loading...')
     : recFilter ? shown + ' recommended to you'
     : classFilter==='ALL' ? REPORTS.length + ' evaluated'
@@ -3972,6 +4181,7 @@ function renderCurrentView(){
   if(currentView==='map') renderMapView();
   else if(currentView==='market') renderMarketView();
   else if(currentView==='requested') renderRequestedView();
+  else if(currentView==='resources') renderResourcesView();
   else renderBoardView();
   updateOrderBanner();
 }
