@@ -326,6 +326,13 @@
   .rec-filter.on{border-color:var(--accent); background:rgba(255,255,255,.05); color:#fff;}
   .rec-filter .dot{display:inline-block; width:7px; height:7px; border-radius:50%;
     background:var(--accent); margin-right:7px; vertical-align:1px;}
+  .hs-tabs{margin-bottom:14px;}
+  .hs-pdf{border-color:var(--accent) !important; color:var(--accent) !important;}
+  .hsflag{margin-top:8px; width:100%; padding:7px 9px; border-radius:8px; border:1px dashed #3A3A3A;
+          background:transparent; color:#9AA0AE; font-size:11.5px; font-weight:700; letter-spacing:.03em; cursor:pointer;}
+  .hsflag:hover{border-color:var(--accent); color:var(--accent);}
+  .hsflag.on{border-style:solid; border-color:var(--accent); color:var(--accent);}
+  .hsflag[disabled]{opacity:.5; cursor:default;}
   .stubs{margin:0 0 18px; padding:12px; border:1px dashed #3A3A3A; border-radius:12px;}
   .stubs-h{display:flex; justify-content:space-between; align-items:center; font-size:11px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; color:#A0A0A0; margin-bottom:10px;}
   .stubs-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px;}
@@ -3082,6 +3089,12 @@ function renderMarketView(){
    shows "Not yet scouted". Scout Recommended is the other tab.
 ================================================================== */
 const REQUESTED_URL = LIVE_URL.replace(/\/list-reports$/, '/list-program-prospects');
+const BOARD_FLAG_URL = LIVE_URL.replace(/\/list-reports$/, '/program-board-flag');
+const PROSPECT_PDF_URL = LIVE_URL.replace(/\/list-reports$/, '/prospect-list-pdf');
+/* A high school's board is its roster. The players the head coach has
+   marked are the ones he is pushing to colleges, and they are what the
+   shareable PDF is built from. */
+let HS_TAB = 'roster';
 /* Column order: the scout-side POSITIONS order first, then anything else
    (JACK, SAF, ILB and other codes a program may use) alphabetically. */
 const POS_ORDER = Object.keys(POSITIONS);
@@ -3122,6 +3135,28 @@ function renderRequestedView(){
     return;
   }
 
+  /* Roster / Prospects, for a high school only. */
+  let hsTabs = '';
+  let pool = REQUESTED;
+  if(isHS()){
+    const nPros = REQUESTED.filter(function(x){ return x.isProspect; }).length;
+    hsTabs = '<div class="req-roles hs-tabs">'
+      + '<button type="button" class="req-chip' + (HS_TAB==='roster' ? ' on' : '') + '" data-hstab="roster">Roster<span class="req-chip-n">' + REQUESTED.length + '</span></button>'
+      + '<button type="button" class="req-chip' + (HS_TAB==='prospects' ? ' on' : '') + '" data-hstab="prospects">Prospects<span class="req-chip-n">' + nPros + '</span></button>'
+      + (HS_TAB==='prospects' && nPros
+          ? '<span class="req-sep"></span><button type="button" class="req-chip hs-pdf" data-hspdf="1">Download list as PDF</button>'
+          : '')
+      + '</div>';
+    if(HS_TAB==='prospects'){
+      pool = REQUESTED.filter(function(x){ return x.isProspect; });
+      if(!pool.length){
+        host.innerHTML = hsTabs + '<div class="empty">No one on your prospect list yet.'
+          + '<br><span style="font-size:12px;color:#666">Open the Roster tab and tap <b>Add to prospects</b> on a player. The list is what InHome pushes to college staffs, and what the shareable PDF is built from.</span></div>';
+        return;
+      }
+    }
+  }
+
   /* Roles inside a position (X / Z / H for receivers, LT / RT for
      tackles) come from the program's own board. When a board carries
      them, the list splits by role by default, so a receivers coach is
@@ -3129,20 +3164,20 @@ function renderRequestedView(){
      per position or narrow to a single role. */
   const roleOf = function(x){ return (x.positionLabel || '').trim().toUpperCase(); };
   const roles = {};
-  REQUESTED.forEach(function(x){ const r = roleOf(x); if(r && r !== (x.position||'')) (roles[x.position||'ATH'] = roles[x.position||'ATH'] || new Set()).add(r); });
-  const hasRoles = Object.keys(roles).some(function(k){ return roles[k].size > 1; });
+  pool.forEach(function(x){ const r = roleOf(x); if(r && r !== (x.position||'')) (roles[x.position||'ATH'] = roles[x.position||'ATH'] || new Set()).add(r); });
+  const hasRoles = !isHS() && Object.keys(roles).some(function(k){ return roles[k].size > 1; });
   const splitOn = hasRoles && REQ_SPLIT_ROLES;
   const chips = hasRoles ? '<div class="req-roles">'
       + '<button type="button" class="req-chip' + (splitOn && !REQ_ROLE ? ' on' : '') + '" data-roles="split">Split by role</button>'
       + '<button type="button" class="req-chip' + (!splitOn ? ' on' : '') + '" data-roles="one">One list</button>'
       + '<span class="req-sep"></span>'
       + Object.keys(roles).sort().map(function(pos){ return Array.from(roles[pos]).sort().map(function(r){
-          const n = REQUESTED.filter(function(x){ return (x.position||'ATH')===pos && roleOf(x)===r; }).length;
+          const n = pool.filter(function(x){ return (x.position||'ATH')===pos && roleOf(x)===r; }).length;
           return '<button type="button" class="req-chip' + (REQ_ROLE===pos+'|'+r ? ' on' : '') + '" data-roles="' + esc(pos+'|'+r) + '">' + esc(r) + '<span class="req-chip-n">' + n + '</span></button>';
         }).join(''); }).join('')
       + '</div>' : '';
 
-  const shown = REQ_ROLE ? REQUESTED.filter(function(x){ return (x.position||'ATH')+'|'+roleOf(x) === REQ_ROLE; }) : REQUESTED;
+  const shown = REQ_ROLE ? pool.filter(function(x){ return (x.position||'ATH')+'|'+roleOf(x) === REQ_ROLE; }) : pool;
   const byPos = {};
   shown.forEach(function(x){
     const pos = x.position || 'ATH';
@@ -3156,7 +3191,7 @@ function renderRequestedView(){
     return (ia<0?99:ia) - (ib<0?99:ib) || a.localeCompare(b);
   });
 
-  host.innerHTML = chips + '<div class="bcols">' + order.map(function(pos){
+  host.innerHTML = hsTabs + chips + '<div class="bcols">' + order.map(function(pos){
     const list = byPos[pos].slice().sort(function(a,b){
       if(a.status!==b.status) return a.status==='scouted' ? -1 : 1;
       return (Number(b.inhomeScore)||0) - (Number(a.inhomeScore)||0) || a.prospect.localeCompare(b.prospect);
@@ -3198,12 +3233,39 @@ function renderRequestedView(){
             +   (meta2 ? '<div class="bcard-meta">' + meta2 + '</div>' : '')
             +   (x.learns ? '<div class="bcard-meta">Learns: ' + esc(x.learns) + '</div>' : '')
             +   (x.note ? '<div class="bcard-meta">' + esc(x.note) + '</div>' : '')
+            +   (isHS() ? '<button type="button" class="hsflag' + (x.isProspect ? ' on' : '') + '" data-hsflag="' + (x.prospectId||'') + '" data-hswant="' + (x.isProspect ? '0' : '1') + '">'
+                  + (x.isProspect ? 'On your prospect list &middot; remove' : '+ Add to prospects') + '</button>' : '')
             + '</div>'
             + '<div class="bcard-right">' + right + '</div>'
             + '</div>';
         }).join('')
       + '</div>';
   }).join('') + '</div>';
+}
+
+/* The head coach moves one of his own players onto, or off, the list
+   InHome pushes to colleges. The card is a button too, so the flag click
+   is stopped before it opens the profile. */
+async function setProspectFlag(btn){
+  const pid = Number(btn.dataset.hsflag), want = btn.dataset.hswant === '1';
+  if(!pid) return;
+  btn.disabled = true; btn.textContent = want ? 'Adding...' : 'Removing...';
+  try{
+    const res = await fetch(BOARD_FLAG_URL, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code: PROGRAM_CODE, prospectId: pid, isProspect: want }) });
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error || ('HTTP ' + res.status));
+    (REQUESTED || []).forEach(function(x){ if(x.prospectId === pid) x.isProspect = d.isProspect; });
+    renderRequestedView();
+  }catch(err){
+    btn.disabled = false;
+    btn.textContent = want ? '+ Add to prospects' : 'On your prospect list \u00b7 remove';
+    alert('Could not update your prospect list: ' + err.message);
+  }
+}
+function downloadProspectPdf(){
+  if(!PROGRAM_CODE) return;
+  window.open(PROSPECT_PDF_URL + '?code=' + encodeURIComponent(PROGRAM_CODE), '_blank', 'noopener');
 }
 
 /* Prospect board cards: one delegated handler, so a re-render never
@@ -3217,10 +3279,17 @@ function openProspectCard(card){
   });
 }
 document.addEventListener('keydown', function(e){
+  /* The add/remove button inside a card fires its own click on Enter. */
+  if(e.target.closest && e.target.closest('.hsflag')) return;
   const card = e.target.closest && e.target.closest('.bcard.req[data-pp]');
   if(card && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); card.click(); }
 });
 document.addEventListener('click', function(e){
+  const tab = e.target.closest && e.target.closest('[data-hstab]');
+  if(tab){ HS_TAB = tab.dataset.hstab; REQ_ROLE = ''; renderRequestedView(); return; }
+  if(e.target.closest && e.target.closest('[data-hspdf]')){ downloadProspectPdf(); return; }
+  const flag = e.target.closest && e.target.closest('.hsflag');
+  if(flag){ e.stopPropagation(); setProspectFlag(flag); return; }
   const chip = e.target.closest && e.target.closest('.req-chip[data-roles]');
   if(chip){
     const v = chip.dataset.roles;
