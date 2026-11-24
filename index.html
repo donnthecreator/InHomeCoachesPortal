@@ -326,6 +326,7 @@
   .rec-filter.on{border-color:var(--accent); background:rgba(255,255,255,.05); color:#fff;}
   .rec-filter .dot{display:inline-block; width:7px; height:7px; border-radius:50%;
     background:var(--accent); margin-right:7px; vertical-align:1px;}
+  .req-sel{width:100%; background:#141414; color:#F5F5F5; border:1px solid #2A2A2A; border-radius:8px; padding:10px; font-size:14px;}
   .ofr{max-width:1100px;}
   .ofr .xgt-strip{margin-bottom:16px;}
   .ofr-top{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:8px;}
@@ -999,11 +1000,17 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
 
     <div class="side-sec">
       <div class="side-h">Requests</div>
-      <button class="side-act" onclick="openRequest('film')">Request more film</button>
-      <button class="side-act" onclick="openRequest('scout')">Talk to the scout</button>
+      <button class="side-act col-req" onclick="openRequest('film')">Request more film</button>
+      <button class="side-act col-req" onclick="openRequest('scout')">Talk to the scout</button>
       <button class="side-act coll-only" onclick="openRequest('coach')">Reach the high school coach</button>
       <button class="side-act coll-only" onclick="openRequest('interview')">Request player interview</button>
       <button class="side-act coll-only" onclick="openRequest('prospect')">Request prospect contact</button>
+      <button class="side-act hs-req" style="display:none" onclick="openRequest('hs_push')">Push a player to colleges</button>
+      <button class="side-act hs-req" style="display:none" onclick="openRequest('hs_eval')">Get a player evaluated</button>
+      <button class="side-act hs-req" style="display:none" onclick="openRequest('hs_consult')">Recruiting call for a family</button>
+      <button class="side-act hs-req" style="display:none" onclick="openRequest('hs_college')">A college reached out</button>
+      <button class="side-act hs-req" style="display:none" onclick="openRequest('hs_seminar')">Book a recruiting night</button>
+      <button class="side-act hs-req" style="display:none" onclick="openRequest('hs_roster')">Update our roster</button>
       <div class="side-note" id="reqNote">Requests route through InHome. We handle contact and compliance, then come back to you.</div>
     </div>
 
@@ -4088,6 +4095,42 @@ var REQUEST_TYPES = {
   }
 };
 
+/* What a high school head coach asks InHome for. A college asks us for
+   film and contact; a high school asks us to get his kids in front of
+   colleges and to help his families through it. */
+Object.assign(REQUEST_TYPES, {
+  hs_push: {
+    label: "Push a player to colleges", hs: true,
+    blurb: "We send his film and InHome report to the college staffs that fit his level and position, and tell you who bites.",
+    ask:   "Which schools or levels should we target, and anything we should know about him?"
+  },
+  hs_eval: {
+    label: "Get a player evaluated", hs: true,
+    blurb: "An InHome scout grades his film and files a full report. It shows on his card and makes him eligible to push.",
+    ask:   "Film link if it is not on his card yet, and what you want us to look at."
+  },
+  hs_consult: {
+    label: "Recruiting call for a family", hs: true,
+    blurb: "We get on the phone with the player and his parents: where he projects, what to do next, camps, visits, offers.",
+    ask:   "Best times to reach the family, and what they are worried about."
+  },
+  hs_college: {
+    label: "A college reached out", hs: true,
+    blurb: "A coach called, texted or came by about one of your players. We check how real the interest is and help you work it.",
+    ask:   "Which school, which coach, and what they said or asked for."
+  },
+  hs_seminar: {
+    label: "Book a recruiting night", hs: true,
+    blurb: "An in-person or virtual session for your players and parents on how recruiting actually works, run by InHome.",
+    ask:   "Preferred dates, in person or virtual, and roughly how many families."
+  },
+  hs_roster: {
+    label: "Update our roster", hs: true,
+    blurb: "New players, transfers, film links, heights and weights, or a correction. We update your board.",
+    ask:   "What changed? Paste names, positions, class years and film links."
+  }
+});
+
 var REQ_PROSPECT = null;   // set when a request opens from inside a report
 
 
@@ -4164,13 +4207,18 @@ function openRequest(kind, prospectName){
     + (REQ_PROSPECT ? '<div class="req-p">' + esc(REQ_PROSPECT) + '</div>' : '')
     + '<div class="req-blurb">' + esc(t.blurb) + '</div>'
     + (kind === 'prospect' ? '<div style="margin-top:12px">' + ncaaChipHTML() + '</div>' : '')
-    + (REQ_PROSPECT ? '' : '<label class="req-l">Prospect (optional)</label><input id="reqWho" type="text" placeholder="Player name">')
+    + (REQ_PROSPECT ? '' : (t.hs && REQUESTED && REQUESTED.length && kind !== 'hs_seminar' && kind !== 'hs_roster'
+        ? '<label class="req-l">Player</label><select id="reqWho" class="req-sel"><option value="">Choose a player (optional)</option>'
+          + REQUESTED.slice().sort(function(a,b){ return (b.isProspect?1:0)-(a.isProspect?1:0) || a.prospect.localeCompare(b.prospect); })
+              .map(function(x){ return '<option>' + esc(x.prospect) + '</option>'; }).join('') + '</select>'
+        : (kind === 'hs_seminar' || kind === 'hs_roster') ? ''
+        : '<label class="req-l">Prospect (optional)</label><input id="reqWho" type="text" placeholder="Player name">'))
     + '<label class="req-l">' + esc(t.ask) + '</label>'
     + '<textarea id="reqMsg" rows="4" placeholder="Type here"></textarea>'
     + '<label class="req-l">Your name and title</label>'
-    + '<input id="reqFrom" type="text" placeholder="e.g. Director of Player Personnel">'
+    + '<input id="reqFrom" type="text" placeholder="' + (t.hs ? 'e.g. Head Coach' : 'e.g. Director of Player Personnel') + '"' + (t.hs && VIEWER && VIEWER.name ? ' value="' + esc(VIEWER.name + (VIEWER.title ? ', ' + VIEWER.title : '')) + '"' : '') + '>'
     + '<button class="req-send" onclick="sendRequest(\'' + kind + '\')">Send request</button>'
-    + '<div class="req-note">Goes to the InHome staff. We handle contact and compliance and come back to you.</div>';
+    + '<div class="req-note">' + (t.hs ? 'Goes straight to the InHome staff. We come back to you, usually within a day.' : 'Goes to the InHome staff. We handle contact and compliance and come back to you.') + '</div>';
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -4279,6 +4327,9 @@ function renderSidePanel(){
     .forEach(function(b){ b.style.display = isHS() ? 'none' : ''; });
   if(isHS()) document.querySelectorAll('.side-nav[data-view="requested"], .vtab[data-view="requested"]').forEach(function(b){ b.textContent = 'Our Prospects'; });
   document.querySelectorAll('.hs-only').forEach(function(b){ b.style.display = isHS() ? '' : 'none'; });
+  document.querySelectorAll('.hs-req').forEach(function(b){ b.style.display = isHS() ? '' : 'none'; });
+  document.querySelectorAll('.col-req').forEach(function(b){ b.style.display = isHS() ? 'none' : ''; });
+  if(isHS()) document.querySelectorAll('.coll-only').forEach(function(b){ b.style.display = 'none'; });
 }
 /* Switching views swaps the contents of #viewHost but leaves the page
    scrolled where it was, so the new view can render off screen: below the
