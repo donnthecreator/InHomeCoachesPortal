@@ -326,6 +326,31 @@
   .rec-filter.on{border-color:var(--accent); background:rgba(255,255,255,.05); color:#fff;}
   .rec-filter .dot{display:inline-block; width:7px; height:7px; border-radius:50%;
     background:var(--accent); margin-right:7px; vertical-align:1px;}
+  .ofr{max-width:1100px;}
+  .ofr .xgt-strip{margin-bottom:16px;}
+  .ofr-top{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:8px;}
+  .ofr-title{font-size:20px; font-weight:900; letter-spacing:.02em;}
+  .ofr-sub{font-size:12.5px; color:var(--mute); margin-top:3px;}
+  .ofr-stats{display:flex; gap:18px;}
+  .ofr-stats div{text-align:right;} .ofr-stats b{display:block; font-size:22px; line-height:1;} .ofr-stats span{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);}
+  .ofr-most{font-size:12px; color:#9AA0AE; margin:6px 0 12px;} .ofr-most b{color:#E6E6E6;}
+  .ofr-filters{flex-wrap:wrap; gap:6px; align-items:center;}
+  .ofr-q{margin-left:auto; min-width:200px; background:#141414; color:#F5F5F5; border:1px solid #2A2A2A; border-radius:8px; padding:7px 10px; font-size:12.5px;}
+  .ofr-list{margin-top:10px;}
+  .ofr-row{display:grid; grid-template-columns:minmax(200px,1.1fr) 56px 2fr; gap:14px; align-items:center; padding:11px 12px; border-top:1px solid #1E1E1E; transition:background .3s;}
+  .ofr-row.ours{background:rgba(225,37,27,.07); border-left:3px solid var(--accent);}
+  .ofr-row.flash{background:rgba(225,37,27,.18);}
+  .ofr-name{font-weight:800; font-size:14px;} .ofr-stars{color:#E8B931; font-size:11px; letter-spacing:-1px; margin-left:3px;}
+  .ofr-meta{font-size:11.5px; color:#9AA0AE; margin-top:2px;}
+  .ofr-commit{display:inline-block; margin-top:5px; font-size:11px; font-weight:800; color:#00C87A; text-decoration:none;}
+  .ofr-n{text-align:center;} .ofr-n b{display:block; font-size:20px; line-height:1;} .ofr-n span{font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute);}
+  .ofr-offers{display:flex; flex-wrap:wrap; gap:5px;}
+  .ofr-o{font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; text-decoration:none; border:1px solid #2A2A2A; color:#C4C8D0;}
+  .ofr-o.l1{border-color:var(--accent); color:#fff; background:rgba(225,37,27,.18);}
+  .ofr-o.l2{border-color:#5A5F6B; color:#E6E6E6;}
+  .ofr-o:hover{filter:brightness(1.25);}
+  .ofr-foot{font-size:11px; color:#666; margin:16px 0 4px; line-height:1.5;}
+  @media (max-width:720px){ .ofr-row{grid-template-columns:1fr 50px;} .ofr-offers{grid-column:1/-1;} .ofr-q{margin-left:0; width:100%;} }
   .res-wrap{max-width:860px;}
   .res-pick{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 16px; font-size:12px; color:var(--mute);}
   .res-pick label{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:700;}
@@ -957,6 +982,7 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
       <button class="side-nav" data-view="board">Scout Recommended</button>
       <button class="side-nav" data-view="market">Production Market</button>
       <button class="side-nav" data-view="map">Map</button>
+      <button class="side-nav hs-only" data-view="offers" style="display:none">Offer Tracker</button>
       <button class="side-nav hs-only" data-view="resources" style="display:none">Parent Resources</button>
     </div>
 
@@ -991,6 +1017,7 @@ body.lightmode .m-score{background:#F4F5F8; border-bottom-color:#DFE3EC;}
         <button class="vtab" data-view="board">Scout Recommended</button>
         <button class="vtab" data-view="market">Production Market</button>
         <button class="vtab" data-view="map">Map</button>
+        <button class="vtab hs-only" data-view="offers" style="display:none">Offer Tracker</button>
         <button class="vtab hs-only" data-view="resources" style="display:none">Parent Resources</button>
       </div>
       <div class="head-right">
@@ -3304,6 +3331,144 @@ function downloadProspectPdf(){
 }
 
 /* =====================================================================
+   OFFER TRACKER (high school tier)
+   Where the high school's state market is moving: every player in the
+   state with a publicly reported offer, who offered him, and who has
+   committed. The scrolling tape on top is the newest offers, in the slot
+   the Production Market ticker holds for colleges. Data comes from the
+   scout site (state-offers), built from public recruiting reports with
+   a source link on every offer.
+===================================================================== */
+const STATE_OFFERS_URL = LIVE_URL.replace(/\/list-reports$/, '/state-offers');
+let STATE_OFFERS = null, STATE_OFFERS_ERR = null;
+let OFR_CLASS = 'ALL', OFR_LEVEL = 'ALL', OFR_Q = '', OFR_OWN = false;
+const OFR_RANK = { FBS:0, FCS:1, D2:2, NAIA:3, D3:4, JUCO:5 };
+
+async function loadStateOffers(){
+  const st = ((PROGRAMS[SESSION_CODE] || {}).st || 'CO').toUpperCase();
+  try{
+    const r = await fetch(STATE_OFFERS_URL + '?state=' + st, { cache:'no-store' });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    (d.players || []).forEach(function(p){
+      p.offers = (p.offers || []).slice().sort(function(a,b){ return (OFR_RANK[a.level]??9) - (OFR_RANK[b.level]??9) || String(a.school).localeCompare(b.school); });
+      p._top = p.offers.length ? (OFR_RANK[p.offers[0].level] ?? 9) : 9;
+    });
+    STATE_OFFERS = d; STATE_OFFERS_ERR = null;
+  }catch(e){ STATE_OFFERS = { players: [] }; STATE_OFFERS_ERR = e.message; }
+}
+function ofrIsOurs(p){
+  const mine = ((PROGRAMS[SESSION_CODE] || {}).school || '').toLowerCase().replace(/\s*(hs|high school)\s*$/,'').trim();
+  return !!mine && String(p.highSchool || '').toLowerCase().indexOf(mine) === 0;
+}
+function renderOffersView(){
+  const host = document.getElementById('viewHost');
+  if(STATE_OFFERS === null){
+    host.innerHTML = '<div class="empty">Loading the offer tracker...</div>';
+    loadStateOffers().then(function(){ if(currentView==='offers') renderCurrentView(); });
+    return;
+  }
+  const all = STATE_OFFERS.players || [];
+  const st = ((PROGRAMS[SESSION_CODE] || {}).st || 'CO').toUpperCase();
+  if(!all.length){
+    host.innerHTML = '<div class="empty">The ' + esc(st) + ' offer tracker is being built.<br><span style="font-size:12px;color:#666">'
+      + (STATE_OFFERS_ERR ? esc(STATE_OFFERS_ERR) : 'Every player in the state with a reported college offer will show here.') + '</span></div>';
+    return;
+  }
+  const classes = Array.from(new Set(all.map(function(p){ return String(p.classYear || STATE_OFFERS.classYear || ''); }).filter(Boolean))).sort();
+  const q = OFR_Q.trim().toLowerCase();
+  const rows = all.filter(function(p){
+    const cy = String(p.classYear || STATE_OFFERS.classYear || '');
+    if(OFR_CLASS !== 'ALL' && cy !== OFR_CLASS) return false;
+    if(OFR_LEVEL === 'FBS' && p._top > 0) return false;
+    if(OFR_LEVEL === 'FCS' && p._top > 1) return false;
+    if(OFR_OWN && !ofrIsOurs(p)) return false;
+    if(q && (p.name + ' ' + p.highSchool + ' ' + (p.city||'') + ' ' + (p.position||'') + ' ' + p.offers.map(function(o){return o.school;}).join(' ')).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).sort(function(a,b){
+    return (ofrIsOurs(b) - ofrIsOurs(a)) || (a._top - b._top) || (b.offers.length - a.offers.length) || a.name.localeCompare(b.name);
+  });
+
+  const nOffers = all.reduce(function(n,p){ return n + p.offers.length; }, 0);
+  const nCommit = all.filter(function(p){ return p.committed && p.committed.school; }).length;
+  const bySchool = {};
+  all.forEach(function(p){ p.offers.forEach(function(o){ bySchool[o.school] = (bySchool[o.school]||0) + 1; }); });
+  const topSchools = Object.keys(bySchool).sort(function(a,b){ return bySchool[b]-bySchool[a]; }).slice(0,6);
+  const ours = all.filter(ofrIsOurs).length;
+
+  /* Tape: dated offers newest first, then commitments. */
+  const tape = [];
+  all.forEach(function(p){
+    p.offers.forEach(function(o){ if(o.date) tape.push({ d:o.date, p:p, txt: o.school, kind:'offer' }); });
+    if(p.committed && p.committed.school) tape.push({ d: p.committed.date || '0000', p:p, txt: p.committed.school, kind:'commit' });
+  });
+  tape.sort(function(a,b){ return String(b.d).localeCompare(String(a.d)); });
+  const tapeItems = tape.slice(0, 40);
+  const tapeHTML = tapeItems.length ? (function(){
+    const one = tapeItems.map(function(t){
+      const nm = t.p.name.split(/\s+/); const sym = (nm[0]||'').charAt(0) + '. ' + nm.slice(1).join(' ');
+      return '<button type="button" class="xgt-item ofr-tk" data-ofr="' + esc(t.p.name) + '"><b>' + esc(sym) + '</b>'
+        + '<span style="color:var(--mute);font-size:9px;margin:0 5px">' + esc(t.p.position||'') + '</span>'
+        + (t.kind==='commit' ? '<span class="xgt-chg up">&#10003; Committed ' + esc(t.txt) + '</span>' : '<span class="xgt-chg up">&#9650; ' + esc(t.txt) + '</span>')
+        + '</button>';
+    }).join('');
+    return '<div class="xgt-strip"><div class="xgt-track">' + one + one + '</div></div>';
+  })() : '';
+
+  const chip = function(v, cur, label, attr){ return '<button type="button" class="req-chip' + (cur===v ? ' on' : '') + '" ' + attr + '="' + esc(v) + '">' + esc(label) + '</button>'; };
+  const filters = '<div class="req-roles ofr-filters">'
+    + chip('ALL', OFR_CLASS, 'All classes', 'data-ofrclass') + classes.map(function(c){ return chip(c, OFR_CLASS, 'Class of ' + c, 'data-ofrclass'); }).join('')
+    + '<span class="req-sep"></span>'
+    + chip('ALL', OFR_LEVEL, 'Any offer', 'data-ofrlevel') + chip('FBS', OFR_LEVEL, 'FBS offer', 'data-ofrlevel') + chip('FCS', OFR_LEVEL, 'FBS or FCS', 'data-ofrlevel')
+    + (ours ? '<span class="req-sep"></span><button type="button" class="req-chip' + (OFR_OWN ? ' on' : '') + '" data-ofrown="1">Our players (' + ours + ')</button>' : '')
+    + '<input type="search" id="ofrQ" class="ofr-q" placeholder="Search player, school, college" value="' + esc(OFR_Q) + '">'
+    + '</div>';
+
+  const lvlClass = function(l){ return l==='FBS' ? 'l1' : l==='FCS' ? 'l2' : 'l3'; };
+  const list = rows.map(function(p){
+    const cy = p.classYear || STATE_OFFERS.classYear || '';
+    const meas = [p.height, p.weight ? p.weight + ' lbs' : ''].filter(Boolean).join(', ');
+    const stars = p.stars247 ? '<span class="ofr-stars" title="247Sports rating">' + '&#9733;'.repeat(Math.min(5, p.stars247)) + '</span>' : '';
+    const commit = (p.committed && p.committed.school)
+      ? '<a class="ofr-commit" href="' + esc(p.committed.source || '#') + '" target="_blank" rel="noopener">&#10003; Committed to ' + esc(p.committed.school) + (p.committed.date ? ' &middot; ' + esc(p.committed.date) : '') + '</a>' : '';
+    return '<div class="ofr-row' + (ofrIsOurs(p) ? ' ours' : '') + '" data-ofrname="' + esc(p.name) + '">'
+      + '<div class="ofr-who"><div class="ofr-name">' + esc(p.name) + ' ' + stars + '</div>'
+      + '<div class="ofr-meta">' + [esc(p.position||''), cy ? 'Class of ' + esc(cy) : '', esc(meas)].filter(Boolean).join(' &middot; ') + '</div>'
+      + '<div class="ofr-meta">' + esc(p.highSchool||'') + (p.city ? ' &middot; ' + esc(p.city) : '') + '</div>' + commit + '</div>'
+      + '<div class="ofr-n"><b>' + p.offers.length + '</b><span>offer' + (p.offers.length===1?'':'s') + '</span></div>'
+      + '<div class="ofr-offers">' + p.offers.map(function(o){
+          return '<a class="ofr-o ' + lvlClass(o.level) + '" href="' + esc(o.source || (p.sources||[])[0] || '#') + '" target="_blank" rel="noopener" title="' + esc(o.level + (o.date ? ', ' + o.date : '') + ' · source') + '">' + esc(o.school) + '</a>';
+        }).join('') + '</div>'
+      + '</div>';
+  }).join('');
+
+  host.innerHTML = '<div class="ofr">' + tapeHTML
+    + '<div class="ofr-top"><div><div class="ofr-title">' + esc(st) + ' Offer Tracker</div>'
+    + '<div class="ofr-sub">Every ' + esc(st) + ' high school player with a publicly reported college offer. Tap any offer for its source.</div></div>'
+    + '<div class="ofr-stats"><div><b>' + all.length + '</b><span>players</span></div><div><b>' + nOffers + '</b><span>offers</span></div><div><b>' + nCommit + '</b><span>committed</span></div></div></div>'
+    + (topSchools.length ? '<div class="ofr-most">Offering the most: ' + topSchools.map(function(sc){ return '<b>' + esc(sc) + '</b> ' + bySchool[sc]; }).join(' &middot; ') + '</div>' : '')
+    + filters
+    + '<div class="ofr-list">' + (list || '<div class="empty">No players match.</div>') + '</div>'
+    + '<div class="ofr-foot">From public recruiting reports (247Sports, On3, MaxPreps, newspapers and school sites) as of ' + esc(STATE_OFFERS.retrieved || '') + '. Offers are as reported publicly and are not verified by InHome with the colleges. Tell us if something is wrong and we will fix it.</div>'
+    + '</div>';
+
+  const qi = document.getElementById('ofrQ');
+  if(qi){ qi.addEventListener('input', function(){ OFR_Q = qi.value; const pos = qi.selectionStart; renderOffersView(); const n = document.getElementById('ofrQ'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } }); }
+  wireTicker(host, []);
+}
+document.addEventListener('click', function(e){
+  const t = e.target.closest && e.target.closest('[data-ofrclass],[data-ofrlevel],[data-ofrown],.ofr-tk');
+  if(!t) return;
+  if(t.dataset.ofrclass){ OFR_CLASS = t.dataset.ofrclass; renderOffersView(); return; }
+  if(t.dataset.ofrlevel){ OFR_LEVEL = t.dataset.ofrlevel; renderOffersView(); return; }
+  if(t.dataset.ofrown){ OFR_OWN = !OFR_OWN; renderOffersView(); return; }
+  if(t.classList.contains('ofr-tk')){
+    const row = document.querySelector('.ofr-row[data-ofrname="' + CSS.escape(t.dataset.ofr) + '"]');
+    if(row){ row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.add('flash'); setTimeout(function(){ row.classList.remove('flash'); }, 1600); }
+  }
+});
+
+/* =====================================================================
    PARENT RESOURCES (high school tier)
    Three things a head coach sends a parent in one tap: where college
    coaches are allowed to be right now, the camps near them worth watching,
@@ -4170,6 +4335,7 @@ function renderCurrentView(){
   const shown = REPORTS.filter(function(r){ return matchesClass(r) && matchesRec(r); }).length;
   document.getElementById('boardCnt').textContent =
     currentView==='resources' ? 'Send to a parent in one tap'
+    : currentView==='offers' ? (STATE_OFFERS ? STATE_OFFERS.players.length + ' players with offers' : 'Loading...')
     : (currentView==='requested' && isHS()) ? (REQUESTED ? REQUESTED.length + ' on the roster · ' + REQUESTED.filter(function(x){return x.isProspect;}).length + ' prospects' : 'Loading...')
     : currentView==='requested' ? (REQUESTED ? REQUESTED.length + ' requested · ' + REQUESTED.filter(function(x){return x.status==='scouted';}).length + ' evaluated' : 'Loading...')
     : (currentView==='market') ? (PERF ? marketLiveAllRows().length + ' tracked' : 'Loading...')
@@ -4177,11 +4343,12 @@ function renderCurrentView(){
     : classFilter==='ALL' ? REPORTS.length + ' evaluated'
                           : shown + ' in class of ' + classFilter;
   document.querySelectorAll('.vtab').forEach(t=>t.classList.toggle('on', t.dataset.view===currentView));
-  document.body.classList.toggle('mapview', currentView==='map' || currentView==='market');
+  document.body.classList.toggle('mapview', currentView==='map' || currentView==='market' || currentView==='offers');
   if(currentView==='map') renderMapView();
   else if(currentView==='market') renderMarketView();
   else if(currentView==='requested') renderRequestedView();
   else if(currentView==='resources') renderResourcesView();
+  else if(currentView==='offers') renderOffersView();
   else renderBoardView();
   updateOrderBanner();
 }
