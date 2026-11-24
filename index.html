@@ -1975,6 +1975,13 @@ function applySchoolTheme(prog){
 function renderHomeTicker(){
   const host = document.getElementById('homeTicker');
   if(!host) return;
+  /* A high school's tape is the state offer market, not production. */
+  if(isHS()){
+    if(STATE_OFFERS === null){ host.innerHTML = ''; loadStateOffers().then(renderHomeTicker); return; }
+    host.innerHTML = offerTapeHTML();
+    wireTicker(host, []);
+    return;
+  }
   let items;
   if(MARKET_DEMO){
     items = marketDemoAllRows();
@@ -3368,6 +3375,31 @@ function ofrIsOurs(p){
   const mine = ((PROGRAMS[SESSION_CODE] || {}).school || '').toLowerCase().replace(/\s*(hs|high school)\s*$/,'').trim();
   return !!mine && String(p.highSchool || '').toLowerCase().indexOf(mine) === 0;
 }
+/* The top-of-portal tape on a high school portal: newest offers and
+   commitments in the state, scrolling like the market ticker. Tapping one
+   opens the Offer Tracker at that player. */
+function offerTapeHTML(){
+  const all = (STATE_OFFERS && STATE_OFFERS.players) || [];
+  const tape = [];
+  all.forEach(function(p){
+    (p.offers || []).forEach(function(o){ if(o.date) tape.push({ d:o.date, p:p, txt:o.school, lvl:o.level, kind:'offer' }); });
+    if(p.committed && p.committed.school) tape.push({ d: p.committed.date || '0000', p:p, txt:p.committed.school, kind:'commit' });
+  });
+  /* Undated offers still ride the tape, after the dated ones. */
+  if(tape.length < 12) all.forEach(function(p){ (p.offers || []).forEach(function(o){ if(!o.date && (o.level==='FBS' || o.level==='FCS')) tape.push({ d:'', p:p, txt:o.school, lvl:o.level, kind:'offer' }); }); });
+  tape.sort(function(a,b){ return String(b.d).localeCompare(String(a.d)); });
+  const items = tape.slice(0, 60);
+  if(!items.length) return '';
+  const one = items.map(function(t){
+    const nm = t.p.name.split(/\s+/); const sym = (nm[0]||'').charAt(0) + '. ' + nm.slice(1).join(' ');
+    return '<button type="button" class="xgt-item ofr-tk" data-ofr="' + esc(t.p.name) + '"><b>' + esc(sym) + '</b>'
+      + '<span style="color:var(--mute);font-size:9px;margin:0 5px">' + esc(t.p.position||'') + (t.p.classYear ? ' ’' + esc(String(t.p.classYear).slice(2)) : '') + '</span>'
+      + (t.kind==='commit' ? '<span class="xgt-chg up">&#10003; ' + esc(t.txt) + '</span>' : '<span class="xgt-chg up">&#9650; ' + esc(t.txt) + '</span>')
+      + '</button>';
+  }).join('');
+  return '<div class="xgt-strip"><div class="xgt-track">' + one + one + '</div></div>';
+}
+
 function renderOffersView(){
   const host = document.getElementById('viewHost');
   if(STATE_OFFERS === null){
@@ -3403,25 +3435,6 @@ function renderOffersView(){
   const topSchools = Object.keys(bySchool).sort(function(a,b){ return bySchool[b]-bySchool[a]; }).slice(0,6);
   const ours = all.filter(ofrIsOurs).length;
 
-  /* Tape: dated offers newest first, then commitments. */
-  const tape = [];
-  all.forEach(function(p){
-    p.offers.forEach(function(o){ if(o.date) tape.push({ d:o.date, p:p, txt: o.school, kind:'offer' }); });
-    if(p.committed && p.committed.school) tape.push({ d: p.committed.date || '0000', p:p, txt: p.committed.school, kind:'commit' });
-  });
-  tape.sort(function(a,b){ return String(b.d).localeCompare(String(a.d)); });
-  const tapeItems = tape.slice(0, 40);
-  const tapeHTML = tapeItems.length ? (function(){
-    const one = tapeItems.map(function(t){
-      const nm = t.p.name.split(/\s+/); const sym = (nm[0]||'').charAt(0) + '. ' + nm.slice(1).join(' ');
-      return '<button type="button" class="xgt-item ofr-tk" data-ofr="' + esc(t.p.name) + '"><b>' + esc(sym) + '</b>'
-        + '<span style="color:var(--mute);font-size:9px;margin:0 5px">' + esc(t.p.position||'') + '</span>'
-        + (t.kind==='commit' ? '<span class="xgt-chg up">&#10003; Committed ' + esc(t.txt) + '</span>' : '<span class="xgt-chg up">&#9650; ' + esc(t.txt) + '</span>')
-        + '</button>';
-    }).join('');
-    return '<div class="xgt-strip"><div class="xgt-track">' + one + one + '</div></div>';
-  })() : '';
-
   const chip = function(v, cur, label, attr){ return '<button type="button" class="req-chip' + (cur===v ? ' on' : '') + '" ' + attr + '="' + esc(v) + '">' + esc(label) + '</button>'; };
   const filters = '<div class="req-roles ofr-filters">'
     + chip('ALL', OFR_CLASS, 'All classes', 'data-ofrclass') + classes.map(function(c){ return chip(c, OFR_CLASS, 'Class of ' + c, 'data-ofrclass'); }).join('')
@@ -3449,7 +3462,7 @@ function renderOffersView(){
       + '</div>';
   }).join('');
 
-  host.innerHTML = '<div class="ofr">' + tapeHTML
+  host.innerHTML = '<div class="ofr">'
     + '<div class="ofr-top"><div><div class="ofr-title">' + esc(st) + ' Offer Tracker</div>'
     + '<div class="ofr-sub">Every ' + esc(st) + ' high school player with a publicly reported college offer. Tap any offer for its source.</div></div>'
     + '<div class="ofr-stats"><div><b>' + all.length + '</b><span>players</span></div><div><b>' + nOffers + '</b><span>offers</span></div><div><b>' + nCommit + '</b><span>committed</span></div></div></div>'
@@ -3461,7 +3474,6 @@ function renderOffersView(){
 
   const qi = document.getElementById('ofrQ');
   if(qi){ qi.addEventListener('input', function(){ OFR_Q = qi.value; const pos = qi.selectionStart; renderOffersView(); const n = document.getElementById('ofrQ'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } }); }
-  wireTicker(host, []);
 }
 document.addEventListener('click', function(e){
   const t = e.target.closest && e.target.closest('[data-ofrclass],[data-ofrlevel],[data-ofrown],.ofr-tk');
@@ -3470,6 +3482,11 @@ document.addEventListener('click', function(e){
   if(t.dataset.ofrlevel){ OFR_LEVEL = t.dataset.ofrlevel; renderOffersView(); return; }
   if(t.dataset.ofrown){ OFR_OWN = !OFR_OWN; renderOffersView(); return; }
   if(t.classList.contains('ofr-tk')){
+    if(currentView !== 'offers'){
+      currentView = 'offers'; OFR_CLASS = 'ALL'; OFR_LEVEL = 'ALL'; OFR_Q = ''; OFR_OWN = false;
+      renderCurrentView();
+      if(typeof renderSidePanel === 'function') renderSidePanel();
+    }
     const row = document.querySelector('.ofr-row[data-ofrname="' + CSS.escape(t.dataset.ofr) + '"]');
     if(row){ row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.add('flash'); setTimeout(function(){ row.classList.remove('flash'); }, 1600); }
   }
